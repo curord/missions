@@ -64,11 +64,45 @@ class UserService:
         self._hydrate_users_in_bulk(users)
         return users
 
+    def calculate_level(self, points: int) -> int:
+        """
+        Calcula el nivell basant-se en els punts totals d'XP.
+        Cada nivell requereix 100 XP. El nivell inicial és 1.
+        """
+        if points < 0:
+            return 1
+        return (points // 100) + 1
+
     def calculate_level_progress(self, points: int) -> int:
         """
         Calcula el percentatge de progrés cap al següent nivell.
+        Cada nivell requereix 100 XP.
         """
+        if points < 0:
+            return 0
         return points % 100
+
+    def calculate_streak(self, user_id: int) -> int:
+        """
+        Calcula la ratxa consecutiva de dies de missions completades d'un usuari.
+        """
+        dates_rows = database.query(
+            """
+            SELECT DISTINCT DATE(completed_at) AS comp_date
+            FROM mission_assignments
+            WHERE user_id = ? AND status = 'completed' AND completed_at IS NOT NULL
+            ORDER BY comp_date DESC
+            """,
+            (user_id,)
+        )
+        completed_dates = []
+        for row in dates_rows:
+            try:
+                d = datetime.strptime(row["comp_date"], "%Y-%m-%d").date()
+                completed_dates.append(d)
+            except (ValueError, TypeError):
+                continue
+        return self._calculate_streak_from_dates(completed_dates)
 
     def _hydrate_users_in_bulk(self, users: List[User]) -> None:
         """
@@ -90,7 +124,26 @@ class UserService:
             """,
             tuple(user_ids)
         )
-        coins_map = {row["user_id"]: (row["total_coins"] or 0) for row in coins_rows}
+        earned_coins_map = {row["user_id"]: (row["total_coins"] or 0) for row in coins_rows}
+
+        # Recuperar monedes gastades en recompenses en lot
+        spent_rows = database.query(
+            f"""
+            SELECT rh.user_id, SUM(r.points_required) AS spent_coins
+            FROM reward_history rh
+            JOIN rewards r ON r.id = rh.reward_id
+            WHERE rh.user_id IN ({placeholders})
+            GROUP BY rh.user_id
+            """,
+            tuple(user_ids)
+        )
+        spent_coins_map = {row["user_id"]: (row["spent_coins"] or 0) for row in spent_rows}
+
+        coins_map = {
+            uid: max(0, earned_coins_map.get(uid, 0) - spent_coins_map.get(uid, 0))
+            for uid in user_ids
+        }
+
 
         # 2. Recuperar dates de completat per a ratxes en lot
         dates_rows = database.query(
@@ -116,11 +169,13 @@ class UserService:
 
         # 3. Assignar valors calculats a cada instància
         for user in users:
+            user.level = self.calculate_level(user.points)
             user.level_progress = self.calculate_level_progress(user.points)
             user.coins = coins_map.get(user.id, 0)
             
             user_dates = dates_map.get(user.id, [])
             user.streak = self._calculate_streak_from_dates(user_dates)
+
 
     def _calculate_streak_from_dates(self, completed_dates: List[date]) -> int:
         """

@@ -50,6 +50,11 @@ def dashboard():
         if m["status"] == "completed"
     ]
 
+    rejected_missions = [
+        m for m in missions
+        if m["status"] == "rejected"
+    ]
+
     return render_template(
         "dashboard.html",
         user=user,
@@ -60,5 +65,7 @@ def dashboard():
         total_points=total_points,
         waiting_count=waiting_count,
         completed_missions=completed_missions,
+        rejected_missions=rejected_missions,
         waiting=waiting
-    )
+    )
+

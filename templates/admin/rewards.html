@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}Catàleg de Recompenses · Administració{% endblock %}
+
+{% block content %}
+
+<section class="section">
+
+    <div class="page-title d-flex justify-content-between align-items-center mb-4">
+        <h1 class="fw-bold mb-0">🎁 Catàleg de Recompenses</h1>
+        <a class="btn-ui btn-primary-ui text-decoration-none" href="{{ url_for('rewards.admin_reward_new') }}" style="display: inline-flex; align-items: center; gap: 6px;">
+            ➕ Nova recompensa
+        </a>
+    </div>
+
+    <!-- Missatges flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} border-0 shadow-sm p-3 mb-4" style="border-radius: 12px; font-weight: bold;">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Selector de Pestanyes (Actives vs Inactives) -->
+    <ul class="nav nav-tabs mb-4 border-bottom-0 gap-2" id="rewardTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active px-4 py-2 border-0 fw-bold shadow-sm" id="active-tab" data-bs-toggle="tab" data-bs-target="#active-pane" type="button" role="tab" aria-controls="active-pane" aria-selected="true" style="border-radius: 12px; background: var(--primary); color: white; transition: all 0.3s ease;">
+                🟢 Actives ({{ active_rewards|length }})
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link px-4 py-2 border-0 fw-bold shadow-sm" id="inactive-tab" data-bs-toggle="tab" data-bs-target="#inactive-pane" type="button" role="tab" aria-controls="inactive-pane" aria-selected="false" style="border-radius: 12px; background: #e9ecef; color: #495057; transition: all 0.3s ease;">
+                🔴 Inactives ({{ inactive_rewards|length }})
+            </button>
+        </li>
+    </ul>
+
+    <!-- Contingut de les Pestanyes -->
+    <div class="tab-content" id="rewardTabsContent">
+        
+        <!-- Pestanya d'actives -->
+        <div class="tab-pane fade show active" id="active-pane" role="tabpanel" aria-labelledby="active-tab" tabindex="0">
+            <div class="card-ui shadow-sm border-0 p-3" style="border-radius: 16px;">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Recompensa</th>
+                                <th>Descripció</th>
+                                <th>Preu en Monedes</th>
+                                <th>Estat</th>
+                                <th class="text-end">Accions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for reward in active_rewards %}
+                                <tr>
+                                    <td>
+                                        <span class="fw-bold">🎁 {{ reward.name }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="text-muted" style="font-size: 0.9rem;">{{ reward.description or "Sense descripció." }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-warning text-dark fw-bold" style="font-size: 0.9rem;">💰 {{ reward.points_required }} monedes</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-success">🟢 Activa</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="d-inline-flex gap-2">
+                                            <a href="{{ url_for('rewards.admin_reward_edit', id=reward.id) }}" class="btn btn-outline-primary btn-sm px-3 fw-bold" style="border-radius: 8px;">
+                                                ✏️ Editar
+                                            </a>
+                                            <form method="POST" action="{{ url_for('rewards.admin_reward_toggle', id=reward.id) }}" style="display:inline;">
+                                                <button class="btn btn-outline-danger btn-sm px-3 fw-bold" style="border-radius: 8px;">
+                                                    🔴 Desactivar
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-5 text-muted">
+                                        No hi ha recompenses actives creades.
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pestanya d'inactives -->
+        <div class="tab-pane fade" id="inactive-pane" role="tabpanel" aria-labelledby="inactive-tab" tabindex="0">
+            <div class="card-ui shadow-sm border-0 p-3" style="border-radius: 16px;">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Recompensa</th>
+                                <th>Descripció</th>
+                                <th>Preu en Monedes</th>
+                                <th>Estat</th>
+                                <th class="text-end">Accions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for reward in inactive_rewards %}
+                                <tr>
+                                    <td>
+                                        <span class="text-decoration-line-through text-muted">🎁 {{ reward.name }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="text-muted" style="font-size: 0.9rem;">{{ reward.description or "Sense descripció." }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary text-white fw-bold" style="font-size: 0.9rem;">💰 {{ reward.points_required }} monedes</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-danger">🔴 Inactiva</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="d-inline-flex gap-2">
+                                            <a href="{{ url_for('rewards.admin_reward_edit', id=reward.id) }}" class="btn btn-outline-primary btn-sm px-3 fw-bold" style="border-radius: 8px;">
+                                                ✏️ Editar
+                                            </a>
+                                            <form method="POST" action="{{ url_for('rewards.admin_reward_toggle', id=reward.id) }}" style="display:inline;">
+                                                <button class="btn btn-outline-success btn-sm px-3 fw-bold" style="border-radius: 8px;">
+                                                    🟢 Activar
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-5 text-muted">
+                                        No hi ha recompenses inactives.
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const activeTab = document.getElementById('active-tab');
+    const inactiveTab = document.getElementById('inactive-tab');
+
+    activeTab.addEventListener('shown.bs.tab', function () {
+        activeTab.style.background = 'var(--primary)';
+        activeTab.style.color = 'white';
+        inactiveTab.style.background = '#e9ecef';
+        inactiveTab.style.color = '#495057';
+    });
+
+    inactiveTab.addEventListener('shown.bs.tab', function () {
+        inactiveTab.style.background = 'var(--primary)';
+        inactiveTab.style.color = 'white';
+        activeTab.style.background = '#e9ecef';
+        activeTab.style.color = '#495057';
+    });
+});
+</script>
+
+{% endblock %}

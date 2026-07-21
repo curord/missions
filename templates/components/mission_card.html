@@ -10,13 +10,22 @@
         </div>
 
         <div class="mission-info">
-            <h3>{{ mission.title }} - {{ mission.gamer_name }}</h3>
+            <h3>{{ mission.title }}</h3>
+            
+            {% if mission.assigned_names %}
+                <div class="mb-2 flex-wrap d-flex gap-1">
+                    {% for name in mission.assigned_names %}
+                        <span class="badge bg-info text-white" style="font-size: 0.7rem; border-radius: 8px;">👤 {{ name }}</span>
+                    {% endfor %}
+                </div>
+            {% endif %}
 
             {% if mission.description %}
-                <p>{{ mission.description }}</p>
+                <p class="mb-2">{{ mission.description }}</p>
             {% endif %}
             <span>⭐ {{ mission.points }} XP</span>
         </div>
+
 
     </div>
 

@@ -398,20 +398,37 @@ def get_waiting_validations():
         """
     )
 def approve_mission(assignment_id, admin_id):
-
-    data = query_one(
-        """
-        SELECT
-            ma.user_id,
-            m.points
-        FROM mission_assignments ma
-        JOIN missions m
-            ON m.id = ma.mission_id
-        WHERE ma.id = ?
-          AND ma.status = 'waiting_validation'
-        """,
-        (assignment_id,)
-    )
+    try:
+        data = query_one(
+            """
+            SELECT
+                ma.user_id,
+                COALESCE(m.points, 10) AS points,
+                COALESCE(m.coins, 0) AS coins
+            FROM mission_assignments ma
+            JOIN missions m
+                ON m.id = ma.mission_id
+            WHERE ma.id = ?
+              AND ma.status = 'waiting_validation'
+            """,
+            (assignment_id,)
+        )
+    except Exception:
+        # Fallback si no existeix la columna 'coins' a la taula 'missions' (SQLite antic)
+        data = query_one(
+            """
+            SELECT
+                ma.user_id,
+                COALESCE(m.points, 10) AS points,
+                (COALESCE(m.points, 10) / 10) AS coins
+            FROM mission_assignments ma
+            JOIN missions m
+                ON m.id = ma.mission_id
+            WHERE ma.id = ?
+              AND ma.status = 'waiting_validation'
+            """,
+            (assignment_id,)
+        )
 
     if not data:
         return False
@@ -422,24 +439,35 @@ def approve_mission(assignment_id, admin_id):
         SET
             status='completed',
             validated_at=?,
-            validated_by=?
+            validated_by=?,
+            coins=?,
+            completed_points=?
         WHERE id=?
         """,
         (
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             admin_id,
+            int(data["coins"]),
+            data["points"],
             assignment_id
         )
     )
 
+    # Obtenir els punts actuals per actualitzar el nivell
+    user = query_one("SELECT points FROM users WHERE id = ?", (data["user_id"],))
+    current_points = user["points"] if user else 0
+    new_points = current_points + data["points"]
+    new_level = (new_points // 100) + 1
+
     execute(
         """
         UPDATE users
-        SET points = points + ?
+        SET points = ?, level = ?
         WHERE id = ?
         """,
         (
-            data["points"],
+            new_points,
+            new_level,
             data["user_id"]
         )
     )
@@ -473,16 +501,25 @@ def approve_mission(assignment_id, admin_id):
     return True
 
 
-def reject_mission(assignment_id):
-    # Tornem la missió a 'pending' perquè el nen ho pugui tornar a intentar
+
+
+def reject_mission(assignment_id, reason=None):
+    # Canviem l'estat a 'rejected' i guardem el motiu i la data de validació/rebuig
     execute(
         """
         UPDATE mission_assignments
-        SET status='pending', completed_at=NULL, completed_by=NULL
+        SET status='rejected',
+            comment=?,
+            validated_at=?
         WHERE id=?
         """,
-        (assignment_id,)
+        (
+            reason or "Revisió no superada",
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            assignment_id
+        )
     )
+
 
 def count_waiting_validations():
 
@@ -557,3 +594,42 @@ def get_family_users(family_id=1):
         WHERE family_id = ?
         ORDER BY role DESC, name
     """, (family_id,))
+
+
+def get_user_mission_history(user_id):
+    """
+    Retorna l'historial complet d'assignacions d'un usuari (aprovades, rebutjades i cancel·lades).
+    """
+    return query(
+        """
+        SELECT
+            ma.id AS assignment_id,
+            ma.status,
+            ma.assignment_type,
+            ma.completed_at,
+            ma.validated_at,
+            ma.comment,
+            COALESCE(ma.coins, m.coins, 0) AS coins,
+            COALESCE(ma.completed_points, m.points, 10) AS points,
+            m.id AS mission_id,
+            m.title,
+            m.description,
+            m.icon,
+            c.name AS category,
+            c.color,
+            c.icon AS category_icon,
+            u.name AS completed_by_name
+        FROM mission_assignments ma
+        INNER JOIN missions m
+            ON m.id = ma.mission_id
+        INNER JOIN categories c
+            ON c.id = m.category_id
+        LEFT JOIN users u
+            ON u.id = ma.completed_by
+        WHERE ma.user_id = ?
+          AND ma.status IN ('completed', 'rejected', 'cancelled')
+        ORDER BY
+            COALESCE(ma.validated_at, ma.completed_at, ma.assigned_date) DESC
+        """,
+        (user_id,)
+    )

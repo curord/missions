@@ -203,8 +203,69 @@
 
 </div>
 
+<div class="card-ui">
+
+    <h2>👥 Assignació a membres</h2>
+
+    <div class="form-grid">
+
+        <div class="full">
+
+            <label class="d-block mb-3 fw-bold">Qui ha de fer aquesta missió?</label>
+            
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="radio" name="assignee_type" id="assign_all" value="all" {% if not assigned_user_ids %}checked{% endif %}>
+                <label class="form-check-label fw-normal" for="assign_all">
+                    👥 Tota la família (tots els membres)
+                </label>
+            </div>
+
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="assignee_type" id="assign_select" value="select" {% if assigned_user_ids %}checked{% endif %}>
+                <label class="form-check-label fw-normal" for="assign_select">
+                    👤 Seleccionar membres:
+                </label>
+            </div>
+
+            <div id="members-list" class="ms-4 mt-3 {% if not assigned_user_ids %}d-none{% endif %}">
+                {% for u in users %}
+                    <div class="form-check mb-2">
+                        <input class="form-check-input member-checkbox" type="checkbox" name="assigned_users" value="{{ u.id }}" id="user_{{ u.id }}" {% if u.id in assigned_user_ids %}checked{% endif %}>
+                        <label class="form-check-label fw-normal" for="user_{{ u.id }}">
+                            {{ u.name }} ({% if u.role == "admin" %}Admin{% else %}Gamer{% endif %})
+                        </label>
+                    </div>
+                {% endfor %}
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const assignAll = document.getElementById('assign_all');
+    const assignSelect = document.getElementById('assign_select');
+    const membersList = document.getElementById('members-list');
+
+    function updateVisibility() {
+        if (assignSelect.checked) {
+            membersList.classList.remove('d-none');
+        } else {
+            membersList.classList.add('d-none');
+        }
+    }
+
+    assignAll.addEventListener('change', updateVisibility);
+    assignSelect.addEventListener('change', updateVisibility);
+});
+</script>
+
 
 <div class="form-actions">
+
 
     <a
         href="{{ url_for('admin.missions') }}"

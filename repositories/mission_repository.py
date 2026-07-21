@@ -49,7 +49,25 @@ class MissionRepository:
         Recupera les assignacions actives i no cancel·lades d'un usuari.
         """
         rows = database.get_user_missions(user_id)
-        return [self._map_to_assignment(row) for row in rows]
+        assignments = [self._map_to_assignment(row) for row in rows]
+
+        # Hydrate gamer_name and assigned_names for each assignment
+        for a in assignments:
+            user_row = database.query_one("SELECT name FROM users WHERE id = ?", (a.user_id,))
+            a.gamer_name = user_row["name"] if user_row else None
+
+            assignee_rows = database.query(
+                """
+                SELECT u.name
+                FROM mission_assignments ma
+                JOIN users u ON u.id = ma.user_id
+                WHERE ma.mission_id = ? AND ma.status <> 'cancelled'
+                """,
+                (a.mission_id,)
+            )
+            a.assigned_names = [r["name"] for r in assignee_rows]
+
+        return assignments
 
     def get_waiting_validations(self) -> List[Assignment]:
         """
@@ -57,6 +75,32 @@ class MissionRepository:
         """
         rows = database.get_waiting_validations()
         return [self._map_to_assignment(row) for row in rows]
+
+    def get_user_mission_history(self, user_id: int) -> List[Assignment]:
+        """
+        Recupera l'historial complet d'assignacions finalitzades, rebutjades o cancel·lades d'un usuari.
+        """
+        rows = database.get_user_mission_history(user_id)
+        assignments = [self._map_to_assignment(row) for row in rows]
+
+        # Hydrate gamer_name and assigned_names for each assignment
+        for a in assignments:
+            user_row = database.query_one("SELECT name FROM users WHERE id = ?", (a.user_id,))
+            a.gamer_name = user_row["name"] if user_row else None
+
+            assignee_rows = database.query(
+                """
+                SELECT u.name
+                FROM mission_assignments ma
+                JOIN users u ON u.id = ma.user_id
+                WHERE ma.mission_id = ? AND ma.status <> 'cancelled'
+                """,
+                (a.mission_id,)
+            )
+            a.assigned_names = [r["name"] for r in assignee_rows]
+
+        return assignments
+
 
     def count_waiting_validations(self) -> int:
         """
@@ -76,11 +120,12 @@ class MissionRepository:
         """
         return database.approve_mission(assignment_id, admin_id)
 
-    def reject_mission(self, assignment_id: int) -> None:
+    def reject_mission(self, assignment_id: int, reason: Optional[str] = None) -> None:
         """
-        Rebutja la validació i torna l'estat a pendent.
+        Rebutja la validació d'una missió i en registra el motiu.
         """
-        database.reject_mission(assignment_id)
+        database.reject_mission(assignment_id, reason)
+
 
     def assign_mission(self, mission_id: int, user_id: int, assignment_type: str = "owner") -> int:
         """

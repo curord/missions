@@ -15,6 +15,7 @@ from routes.auth import auth_bp
 from routes.dashboard import dashboard_bp
 from routes.missions import missions_bp
 from routes.admin import admin_bp
+from routes.rewards import rewards_bp
 
 
 app = Flask(__name__)
@@ -29,6 +30,16 @@ app.register_blueprint(dashboard_bp)
 app.register_blueprint(missions_bp)
 app.register_blueprint(ui_bp)
 app.register_blueprint(admin_bp)
+app.register_blueprint(rewards_bp)
+
+
+@app.context_processor
+def inject_version():
+    """
+    Injecta la versió de l'aplicació a totes les plantilles de Jinja2 de manera global.
+    """
+    return dict(app_version=Config.APP_VERSION)
+
 
 
 @app.route("/")

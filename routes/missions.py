@@ -49,4 +49,28 @@ def complete(assignment_id):
     return redirect(url_for("dashboard.dashboard"))
 
 
+@missions_bp.get("/missions/history")
+def history():
+    """
+    Renderitza la vista de l'historial complet de missions (aprovades, rebutjades, cancel·lades)
+    de l'usuari gamer actualment autenticat.
+    """
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+
+    user = user_service.get_user_by_id(session["user_id"])
+    if not user:
+        session.clear()
+        return redirect(url_for("auth.login"))
+
+    history = mission_service.get_user_mission_history(user.id)
+
+    return render_template(
+        "history.html",
+        user=user,
+        history=history
+    )
+
+
+
 

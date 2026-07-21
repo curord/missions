@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if reward %}
+        Editar recompensa
+    {% else %}
+        Nova recompensa
+    {% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<form method="POST">
+
+<div class="page-header mb-4">
+    <div>
+        <h1>
+            {% if reward %}
+                ✏️ Editar recompensa
+            {% else %}
+                ➕ Nova recompensa
+            {% endif %}
+        </h1>
+        <p>Defineix una recompensa a la qual els nens puguin bescanviar les seves monedes.</p>
+    </div>
+</div>
+
+<div class="card-ui shadow-sm border-0 p-4 mb-4" style="border-radius: 20px;">
+    <h2 class="fw-bold mb-4">📝 Informació de la Recompensa</h2>
+
+    <div class="form-grid">
+        <div class="mb-3">
+            <label class="form-label fw-bold">Nom de la recompensa</label>
+            <input
+                type="text"
+                name="name"
+                class="form-control"
+                value="{{ reward.name if reward else '' }}"
+                required
+                style="border-radius: 8px;"
+            >
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-bold">Preu en Monedes 💰</label>
+            <input
+                type="number"
+                name="points_required"
+                class="form-control"
+                value="{{ reward.points_required if reward else 10 }}"
+                required
+                min="1"
+                style="border-radius: 8px;"
+            >
+        </div>
+
+        <div class="full mb-3">
+            <label class="form-label fw-bold">Descripció</label>
+            <textarea
+                rows="4"
+                name="description"
+                class="form-control"
+                style="border-radius: 8px;"
+            >{{ reward.description if reward else '' }}</textarea>
+        </div>
+    </div>
+</div>
+
+{% if reward %}
+<div class="card-ui shadow-sm border-0 p-4 mb-4" style="border-radius: 20px;">
+    <h2 class="fw-bold mb-4">⚙️ Comportament</h2>
+    <div class="form-grid">
+        <div class="form-check">
+            <input
+                type="checkbox"
+                name="active"
+                class="form-check-input"
+                id="active"
+                {% if reward.active %}
+                checked
+                {% endif %}
+            >
+            <label class="form-check-label" for="active">Recompensa activa (disponible per a bescanviar)</label>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="form-actions d-flex gap-2">
+    <a
+        href="{{ url_for('rewards.admin_rewards') }}"
+        class="btn btn-outline-secondary px-4 py-2 fw-bold"
+        style="border-radius: 12px;"
+    >
+        Cancel·lar
+    </a>
+
+    <button
+        class="btn btn-primary px-4 py-2 fw-bold"
+        type="submit"
+        style="border-radius: 12px; background: var(--primary); border: none;"
+    >
+        💾 Desar recompensa
+    </button>
+</div>
+
+</form>
+
+{% endblock %}

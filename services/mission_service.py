@@ -35,9 +35,37 @@ class MissionService:
 
     def get_user_missions(self, user_id: int) -> List[Assignment]:
         """
-        Obté les assignacions de missions actives d'un usuari.
+        Obté les assignacions de missions actives d'un usuari, formatant la data de validació/rebuig.
         """
-        return self.mission_repo.get_user_missions(user_id)
+        assignments = self.mission_repo.get_user_missions(user_id)
+        for a in assignments:
+            if a.validated_at:
+                try:
+                    dt = datetime.strptime(a.validated_at, "%Y-%m-%d %H:%M:%S")
+                    a.validated_date = dt.strftime("%d/%m/%Y %H:%M")
+                except (ValueError, TypeError):
+                    a.validated_date = a.validated_at
+        return assignments
+
+    def get_user_mission_history(self, user_id: int) -> List[Assignment]:
+        """
+        Obté l'historial de missions finalitzades, rebutjades o cancel·lades d'un usuari, formatant la data.
+        """
+        assignments = self.mission_repo.get_user_mission_history(user_id)
+        for a in assignments:
+            # Utilitzar validated_at com a data principal si existeix, altrament completed_at
+            date_str = a.validated_at or a.completed_at
+            if date_str:
+                try:
+                    dt = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+                    a.validated_date = dt.strftime("%d/%m/%Y %H:%M")
+                except (ValueError, TypeError):
+                    a.validated_date = date_str
+            else:
+                a.validated_date = "No disponible"
+        return assignments
+
+
 
     def get_waiting_validations(self) -> List[Assignment]:
         """
@@ -95,11 +123,12 @@ class MissionService:
         """
         return self.mission_repo.approve_mission(assignment_id, admin_id)
 
-    def reject_mission(self, assignment_id: int) -> None:
+    def reject_mission(self, assignment_id: int, reason: Optional[str] = None) -> None:
         """
-        Rebutja la validació i torna l'estat de la missió assignada a pendent.
+        Rebutja la validació i passa l'assignació a 'rejected' amb el motiu especificat.
         """
-        self.mission_repo.reject_mission(assignment_id)
+        self.mission_repo.reject_mission(assignment_id, reason)
+
 
     def update_mission(self, mission_id: int, data: dict) -> None:
         """

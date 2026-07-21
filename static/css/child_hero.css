@@ -1,78 +1,187 @@
+/* ==========================================
+   CHILD HERO COMPONENT (CSS GRID & ULTRA-COMPACT)
+========================================== */
 
-.hero-level {
-    display:flex;
-    justify-content:space-between;
-    font-weight:bold;
-    font-size:1rem;
+.child-hero {
+    background: linear-gradient(135deg, var(--primary, #0d6efd), #4f8cff);
+    color: white;
+    border-radius: 16px;
+    padding: 12px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-sm, 0 2px 4px rgba(0,0,0,0.08));
+    
+    /* Configurar CSS Grid */
+    display: grid;
+    grid-template-areas:
+        "info"
+        "stats"
+        "progress";
+    grid-template-columns: 1fr;
+    gap: 10px;
+    align-items: center;
+    max-width: 100%;
 }
 
+/* 1. Àrea 'info': Avatar i Nom */
+.child-info {
+    grid-area: info;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.child-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    flex-shrink: 0;
+}
+
+.child-name-container h1 {
+    color: white;
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.1;
+}
+
+.child-name-container p {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.75rem;
+    margin: 0;
+}
+
+/* 2. Àrea 'stats': Graella d'Estadístiques (2x2 en mòbil) */
+.player-stats {
+    grid-area: stats;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+}
+
+.stat-item {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 6px 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.2s ease;
+}
+
+.stat-item:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.stat-emoji {
+    font-size: 1.2rem;
+}
+
+.stat-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.stat-details strong {
+    font-size: 0.9rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.stat-details small {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+/* 3. Àrea 'progress': Barra de progrés a tota l'amplada sota les estadístiques */
+.level-progress {
+    grid-area: progress;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
 
 .progress-ui {
-    height:10px;
-    background:#eee;
-    border-radius:20px;
-    overflow:hidden;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 6px;
+    overflow: hidden;
 }
-
 
 .progress-ui-value {
-    height:100%;
-    background:linear-gradient(90deg,#4caf50,#8bc34a);
+    height: 100%;
+    background: white;
+    border-radius: 6px;
+    transition: width 0.4s ease;
 }
 
-.child-hero{
-
-    display:grid;
-    grid-template-columns:220px 1fr;
-    gap:40px;
-    align-items:center;
-
+.progress-text {
+    white-space: nowrap;
 }
 
-.hero-stats{
-
-    display:flex;
-    flex-direction:column;
-    gap:18px;
-
-    font-size:1.1rem;
-    font-weight:600;
-
+.progress-text small {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.85);
 }
 
-.hero-player{
-
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    text-align:center;
-
-}
-
-.child-avatar{
-
-    width:110px;
-    height:110px;
-
-    font-size:5rem;
-
-    display:flex;
-    align-items:center;
-    justify-content:center;
-
-    border-radius:50%;
-    background:rgba(255,255,255,.18);
-
-    margin-bottom:16px;
-
-}
-
-@media (max-width:768px){
-
-    .child-hero{
-
-        grid-template-columns:1fr;
-
+/* ==========================================
+   RESPONSIVE ESCRIPTORI (>= 768px)
+========================================== */
+@media (min-width: 768px) {
+    .child-hero {
+        grid-template-areas:
+            "info stats"
+            "progress progress";
+        grid-template-columns: auto 1fr;
+        padding: 14px 18px;
+        gap: 12px 24px;
     }
 
+    .child-info {
+        gap: 10px;
+    }
+
+    .child-avatar {
+        width: 44px;
+        height: 44px;
+        font-size: 1.8rem;
+    }
+
+    .child-name-container h1 {
+        font-size: 1.3rem;
+    }
+
+    .child-name-container p {
+        font-size: 0.8rem;
+    }
+
+    /* Ocupa l'espai horitzontal disponible */
+    .player-stats {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+    }
+
+    .stat-item {
+        padding: 6px 12px;
+        justify-content: center;
+    }
+
+    .stat-emoji {
+        font-size: 1.3rem;
+    }
+
+    .stat-details strong {
+        font-size: 1rem;
+    }
+
+    .stat-details small {
+        font-size: 0.7rem;
+    }
 }

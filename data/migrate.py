@@ -1,43 +1,55 @@
+import sys
+import os
 from pathlib import Path
-import sqlite3
 
-DB = "data/missions.db"
-MIGRATIONS = "data/migrations"
+# Afegir directori arrel del projecte al path de Python
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-conn = sqlite3.connect(DB)
-cursor = conn.cursor()
+import database
 
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS schema_migrations(
-    filename TEXT PRIMARY KEY,
-    executed_at DATETIME DEFAULT CURRENT_TIMESTAMP
-)
-""")
+def migrate():
+    """
+    Executa totes les migracions pendents sobre la base de dades activa (SQLite o PostgreSQL).
+    """
+    # Inicialitza connexió / estructura
+    database.init_database()
 
-executed = {
-    row[0]
-    for row in cursor.execute(
-        "SELECT filename FROM schema_migrations"
-    )
-}
+    # Crear taula de control de migracions si no existeix
+    if not database.table_exists("schema_migrations"):
+        if database.IS_POSTGRES:
+            database.execute("""
+            CREATE TABLE schema_migrations(
+                filename VARCHAR(255) PRIMARY KEY,
+                executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """)
+        else:
+            database.execute("""
+            CREATE TABLE schema_migrations(
+                filename TEXT PRIMARY KEY,
+                executed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+            """)
 
-for file in sorted(Path(MIGRATIONS).glob("*.sql")):
+    # Obtenir migracions ja aplicades
+    rows = database.query("SELECT filename FROM schema_migrations")
+    executed = {row["filename"] for row in rows}
 
-    if file.name in executed:
-        continue
+    # Aplicar migracions pendents de la carpeta data/migrations
+    migrations_dir = Path("data/migrations")
+    for file in sorted(migrations_dir.glob("*.sql")):
+        if file.name in executed:
+            continue
 
-    print(f"Applying {file.name}")
+        print(f"Applying {file.name}")
+        database.execute_script(file)
 
-    sql = file.read_text(encoding="utf8")
+        database.execute(
+            "INSERT INTO schema_migrations(filename) VALUES(?)",
+            (file.name,)
+        )
 
-    cursor.executescript(sql)
+    print("Done.")
 
-    cursor.execute(
-        "INSERT INTO schema_migrations(filename) VALUES(?)",
-        (file.name,)
-    )
-
-conn.commit()
-conn.close()
-
-print("Done.")
+if __name__ == "__main__":
+    migrate()

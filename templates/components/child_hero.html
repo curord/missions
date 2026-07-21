@@ -1,79 +1,55 @@
-
-
-
 <section class="child-hero">
 
+    <!-- Àrea 'info': Avatar i Nom -->
     <div class="child-info">
-
-        <div class="child-avatar">
-            🎮
+        <div class="child-avatar">🎮</div>
+        <div class="child-name-container">
+            <h1>{{ user.name }}</h1>
+            <p>La teva consola de missions</p>
         </div>
-
-        <div>
-
-            <h1> {{ user.name }} </h1>
-
-            <p>La teva consola de missions t'està esperant.</p>
-
-        </div>
-
     </div>
 
-    <div class="hero-progress">
-
-        <div class="player-stats">
-
-            <div>
-                🏆
+    <!-- Àrea 'stats': Graella de 4 estadístiques -->
+    <div class="player-stats">
+        <div class="stat-item">
+            <span class="stat-emoji">🏆</span>
+            <div class="stat-details">
                 <strong>{{ user.level }}</strong>
                 <small>Nivell</small>
             </div>
-            <div>
-                ⭐
+        </div>
+        <div class="stat-item">
+            <span class="stat-emoji">⭐</span>
+            <div class="stat-details">
                 <strong>{{ user.points }}</strong>
                 <small>XP</small>
-            </div>   
-            <div>
-                💰
+            </div>
+        </div>   
+        <div class="stat-item">
+            <span class="stat-emoji">💰</span>
+            <div class="stat-details">
                 <strong>{{ user.coins }}</strong>
                 <small>Monedes</small>
             </div>
-
-            <div>
-                🔥
+        </div>
+        <div class="stat-item">
+            <span class="stat-emoji">🔥</span>
+            <div class="stat-details">
                 <strong>{{ user.streak }}</strong>
                 <small>Ratxa</small>
             </div>
         </div>
+    </div>
 
-
-        <div class="level-progress">
-
-            <div class="progress-bar">
-                <div class="progress-fill"
-                    style="width: {{ user.level_progress }}%">
-                </div>
-            </div>
-
-            <small>
-                {{ user.level_progress }}% fins al següent nivell
-            </small>
-
+    <!-- Àrea 'progress': Barra de progrés de nivell -->
+    <div class="level-progress">
+        <div class="progress-ui">
+            <div class="progress-ui-value" style="width: {{ user.level_progress }}%;"></div>
+        </div>
+        <div class="progress-text">
+            <small>{{ user.level_progress }}% fins al següent nivell</small>
         </div>
     </div>
-    <div class="hero-level">
-
-        <span>Nivell {{ user.level }}</span>
-
-        <span>{{ user.points }} XP</span>
-
-    </div>
-
-    <div class="progress-ui">
-
-        <div class="progress-ui-value" style="width: {{ (user.points % 100) }}%;"></div>
-
-    </div>
-
 
 </section>
+

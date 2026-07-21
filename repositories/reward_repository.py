@@ -106,3 +106,13 @@ class RewardRepository:
             points_required=row.get("points_required"),
             active=row.get("active", 1)
         )
+
+    def disable(self, reward_id: int) -> None:
+        """
+        Marca una recompensa com a inactiva.
+        """
+        database.execute(
+            "UPDATE rewards SET active = 0 WHERE id = ?",
+            (reward_id,)
+        )
+
