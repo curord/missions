@@ -1,34 +1,29 @@
-from datetime import datetime
+from flask import Blueprint, render_template, redirect, session, url_for
+from services.user_service import UserService
+from services.mission_service import MissionService
 
-from flask import (
-    Blueprint,
-    render_template,
-    redirect,
-    session,
-    url_for,
-)
-
-from database import (
-    get_user,
-    get_user_missions,
-    complete_mission,
-    approve_mission, 
-    reject_mission
-)
+import logging
 
 missions_bp = Blueprint("missions", __name__)
-
+user_service = UserService()
+mission_service = MissionService()
 
 
 @missions_bp.get("/missions")
 def missions():
-    print ("Sessió actual:", session)
+    """
+    Renderitza la llista de missions de l'usuari actual que estan actives.
+    """
+    logging.info("Sessió actual: %s", session)
     if "user_id" not in session:
         return redirect(url_for("auth.login"))
 
-    user = get_user(session["user_id"])
+    user = user_service.get_user_by_id(session["user_id"])
+    if not user:
+        session.clear()
+        return redirect(url_for("auth.login"))
 
-    missions = get_user_missions(user["id"])
+    missions = mission_service.get_user_missions(user.id)
 
     return render_template(
         "missions.html",
@@ -37,16 +32,21 @@ def missions():
     )
 
 
+
 @missions_bp.post("/mission/<int:assignment_id>/complete")
 def complete(assignment_id):
-
+    """
+    Marca una missió assignada com a completada per l'usuari actual i redirigeix al dashboard.
+    """
     if "user_id" not in session:
         return redirect(url_for("auth.login"))
 
-    complete_mission(
+    mission_service.complete_mission(
         assignment_id,
         session["user_id"]
     )
 
     return redirect(url_for("dashboard.dashboard"))
+
+
 

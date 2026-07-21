@@ -2,6 +2,13 @@ from flask import Flask, redirect, session, url_for
 from config import Config
 from database import init_database
 from routes.ui import ui_bp
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
+
 
 # Blueprints
 from routes.auth import auth_bp

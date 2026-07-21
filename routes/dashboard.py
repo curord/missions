@@ -1,24 +1,28 @@
 from flask import Blueprint, render_template, session, redirect, url_for
-from datetime import datetime
-
-from database import get_user, get_user_missions, count_waiting_validations,  get_waiting_validations
+from services.user_service import UserService
+from services.mission_service import MissionService
 
 dashboard_bp = Blueprint("dashboard", __name__)
+user_service = UserService()
+mission_service = MissionService()
 
 
 @dashboard_bp.route("/dashboard")
 def dashboard():
-
+    """
+    Renderitza la vista de dashboard principal de l'usuari (gamer o administrador),
+    calculant llistes de missions completades, pendents i de validació en curs.
+    """
     if "user_id" not in session:
         return redirect(url_for("auth.login"))
 
-    user = get_user(session["user_id"])
+    user = user_service.get_user_by_id(session["user_id"])
 
     if not user:
         session.clear()
         return redirect(url_for("auth.login"))
 
-    missions = get_user_missions(user["id"])
+    missions = mission_service.get_user_missions(user.id)
 
     pending_missions = [
         m for m in missions
@@ -34,42 +38,17 @@ def dashboard():
     total_points = user["points"]
 
     waiting_count = 0
-
-    if user["role"] == "admin":
-        waiting_count = count_waiting_validations()
-
     waiting = []
 
     if user["role"] == "admin":
-        waiting = get_waiting_validations()
+        waiting = mission_service.get_waiting_validations()
+        waiting_count = len(waiting)
 
 
-    for mission in waiting:
-
-        completed = datetime.strptime(
-            mission["completed_at"],
-            "%Y-%m-%d %H:%M:%S"
-        )
-
-        delta = datetime.now() - completed
-
-        if delta.days > 0:
-            mission["time_ago"] = f"fa {delta.days} dies"
-        elif delta.seconds >= 3600:
-            mission["time_ago"] = f"fa {delta.seconds//3600} h"
-        elif delta.seconds >= 60:
-            mission["time_ago"] = f"fa {delta.seconds//60} min"
-        else:
-            mission["time_ago"] = "ara mateix"
-
-        mission["completed_date"] = completed.strftime("%d/%m/%Y %H:%M")
-
-    
     completed_missions = [
         m for m in missions
         if m["status"] == "completed"
     ]
-
 
     return render_template(
         "dashboard.html",
@@ -82,5 +61,4 @@ def dashboard():
         waiting_count=waiting_count,
         completed_missions=completed_missions,
         waiting=waiting
-
-    )
+    )

@@ -1,32 +1,19 @@
-from flask import Blueprint
-
-auth_bp = Blueprint("auth", __name__)
-
 from flask import Blueprint, render_template, redirect, session, url_for
-
-from database import query_one
+from services.user_service import UserService
 
 auth_bp = Blueprint("auth", __name__)
+user_service = UserService()
 
 
 @auth_bp.route("/login")
 def login():
+    """
+    Renderitza la pàgina de login principal llistant tots els usuaris disponibles.
+    """
+    users = user_service.get_all_users()
 
-    users = query_one("""
-        SELECT COUNT(*) AS total
-        FROM users
-    """)
-
-    if not users or users["total"] == 0:
+    if not users:
         return "No hi ha usuaris a la base de dades."
-
-    from database import query
-
-    users = query("""
-        SELECT *
-        FROM users
-        ORDER BY role,name
-    """)
 
     return render_template(
         "login.html",
@@ -36,12 +23,10 @@ def login():
 
 @auth_bp.route("/login/<username>")
 def login_user(username):
-
-    user = query_one("""
-        SELECT *
-        FROM users
-        WHERE LOWER(name)=LOWER(?)
-    """, (username,))
+    """
+    Autentica un usuari pel seu nom de pila i inicialitza la sessió de Flask.
+    """
+    user = user_service.get_user_by_name(username)
 
     if not user:
         return redirect(url_for("auth.login"))
@@ -58,7 +43,9 @@ def login_user(username):
 
 @auth_bp.route("/logout")
 def logout():
-
+    """
+    Tanca la sessió actual i neteja les dades emmagatzemades a Flask.
+    """
     session.clear()
-
     return redirect(url_for("auth.login"))
+
