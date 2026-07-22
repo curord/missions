@@ -69,32 +69,102 @@ class RewardService:
         if user.coins < reward.points_required:
             return False
 
-        # Registrar compra a l'historial
+        # Registrar compra a l'historial segons la configuració familiar de lliurament
+        from services.family_config_service import FamilyConfigService
+        config = FamilyConfigService().get_config(user.family_id if user else 1)
+        delivered_status = 0 if config.rewards_require_delivery else 1
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
         database.execute(
             """
-            INSERT INTO reward_history (reward_id, user_id, requested_at, approved, delivered)
-            VALUES (?, ?, ?, 1, 1)
+            INSERT INTO reward_history (reward_id, user_id, requested_at, approved, delivered, delivered_at)
+            VALUES (?, ?, ?, 1, ?, ?)
             """,
-            (reward_id, user_id, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            (reward_id, user_id, now_str, delivered_status, now_str if delivered_status == 1 else None)
         )
         return True
 
     def get_user_reward_history(self, user_id: int) -> List[dict]:
         """
-        Retorna l'historial de recompenses comprades per un nen, amb data de compra.
+        Retorna l'historial complet de recompenses sol·licitades per un usuari, auditant lliuraments.
         """
         rows = database.query(
             """
-            SELECT rh.id, rh.requested_at, r.name, r.points_required AS cost
+            SELECT 
+                rh.id, 
+                rh.requested_at, 
+                rh.delivered, 
+                rh.delivered_at, 
+                rh.comment, 
+                r.name, 
+                COALESCE(r.icon, '🎁') AS icon, 
+                r.points_required AS cost,
+                v.name AS delivered_by_name
             FROM reward_history rh
             JOIN rewards r ON r.id = rh.reward_id
+            LEFT JOIN users v ON v.id = rh.delivered_by
             WHERE rh.user_id = ?
             ORDER BY rh.requested_at DESC
             """,
             (user_id,)
         )
         
-        # Formatar la data
+        for r in rows:
+            if r.get("requested_at"):
+                try:
+                    dt = datetime.strptime(r["requested_at"], "%Y-%m-%d %H:%M:%S")
+                    r["formatted_date"] = dt.strftime("%d/%m/%Y %H:%M")
+                except (ValueError, TypeError):
+                    r["formatted_date"] = r["requested_at"]
+            else:
+                r["formatted_date"] = "No disponible"
+
+            if r.get("delivered_at"):
+                try:
+                    dt_del = datetime.strptime(r["delivered_at"], "%Y-%m-%d %H:%M:%S")
+                    r["formatted_delivered_date"] = dt_del.strftime("%d/%m/%Y %H:%M")
+                except (ValueError, TypeError):
+                    r["formatted_delivered_date"] = r["delivered_at"]
+
+        return rows
+
+    def get_pending_deliveries_count(self, family_id: int = 1) -> int:
+        """
+        Retorna el recompte de recompenses compreses pendents de lliurar (delivered = 0).
+        """
+        row = database.query_one(
+            """
+            SELECT COUNT(*) AS total
+            FROM reward_history rh
+            JOIN rewards r ON r.id = rh.reward_id
+            WHERE r.family_id = ? AND rh.delivered = 0
+            """,
+            (family_id,)
+        )
+        return row["total"] if row else 0
+
+    def get_pending_deliveries(self, family_id: int = 1) -> List[dict]:
+        """
+        Llista de recompenses pendents de lliurament físic per a la família.
+        """
+        rows = database.query(
+            """
+            SELECT 
+                rh.id, 
+                rh.requested_at, 
+                r.name AS reward_name, 
+                COALESCE(r.icon, '🎁') AS reward_icon, 
+                r.points_required AS cost, 
+                u.name AS gamer_name, 
+                u.avatar
+            FROM reward_history rh
+            JOIN rewards r ON r.id = rh.reward_id
+            JOIN users u ON u.id = rh.user_id
+            WHERE r.family_id = ? AND rh.delivered = 0
+            ORDER BY rh.requested_at DESC
+            """,
+            (family_id,)
+        )
         for r in rows:
             if r.get("requested_at"):
                 try:
@@ -105,4 +175,22 @@ class RewardService:
             else:
                 r["formatted_date"] = "No disponible"
         return rows
+
+    def deliver_reward(self, reward_history_id: int, admin_id: Optional[int] = None, comment: Optional[str] = None) -> bool:
+        """
+        Marca una recompensa com a lliurada físicament (delivered = 1) auditant l'administrador i la data.
+        """
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        database.execute(
+            """
+            UPDATE reward_history
+            SET delivered = 1, delivered_by = ?, delivered_at = ?, comment = ?
+            WHERE id = ?
+            """,
+            (admin_id, now_str, comment, reward_history_id)
+        )
+        return True
+
+
+
 

@@ -12,13 +12,14 @@
         <div class="mission-info">
             <h3>{{ mission.title }}</h3>
             
-            {% if mission.assigned_names %}
+            {% if mission.assignment_type in ['collaborative', 'shared'] and mission.assigned_names %}
                 <div class="mb-2 flex-wrap d-flex gap-1">
                     {% for name in mission.assigned_names %}
                         <span class="badge bg-info text-white" style="font-size: 0.7rem; border-radius: 8px;">👤 {{ name }}</span>
                     {% endfor %}
                 </div>
             {% endif %}
+
 
             {% if mission.description %}
                 <p class="mb-2">{{ mission.description }}</p>
@@ -31,21 +32,30 @@
 
     <div class="mission-meta">
 
-        {% if mission.status == "pending" %}
+        {% if mission.status in ["pending", "in_progress"] %}
 
-            <form
-                method="POST"
-                action="{{ url_for('missions.complete', assignment_id=mission.assignment_id) }}"
-            >
+            {% if mission.status == "in_progress" %}
+                <div class="mb-2">
+                    <span class="badge bg-warning text-dark fw-bold px-2 py-1" style="font-size: 0.75rem; border-radius: 8px;">⚡ En curs</span>
+                </div>
+            {% endif %}
 
-                <button
-                    type="submit"
-                    class="btn-ui btn-primary-ui mission-button"
-                >
-                    ✅ Completar
-                </button>
+            <div class="d-flex gap-2 w-100">
+                {% if mission.status == "pending" %}
+                    <form method="POST" action="{{ url_for('missions.start', assignment_id=mission.assignment_id) }}" class="flex-fill">
+                        <button type="submit" class="btn btn-outline-primary btn-sm w-100 fw-bold py-2" style="border-radius: 10px;">
+                            🚀 Iniciar
+                        </button>
+                    </form>
+                {% endif %}
 
-            </form>
+                <form method="POST" action="{{ url_for('missions.complete', assignment_id=mission.assignment_id) }}" class="flex-fill">
+                    <button type="submit" class="btn-ui btn-primary-ui mission-button w-100">
+                        ✅ Completar
+                    </button>
+                </form>
+            </div>
+
 
             {% elif mission.status == "waiting_validation" %}
 

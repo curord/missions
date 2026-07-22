@@ -35,9 +35,15 @@
                                         <span class="text-muted" style="font-size: 0.75rem;">
                                             📅 {{ item.validated_date }}
                                         </span>
+                                        {% if item.validated_by_name %}
+                                            <span class="text-muted" style="font-size: 0.75rem;">
+                                                👤 Validat per: <strong>{{ item.validated_by_name }}</strong>
+                                            </span>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>
+
 
                             <!-- Centre/Dreta: Recompenses i Estat -->
                             <div class="d-flex align-items-center gap-3 ms-md-auto w-100 w-md-auto justify-content-between justify-content-md-end flex-wrap">

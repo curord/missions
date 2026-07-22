@@ -26,8 +26,9 @@ def dashboard():
 
     pending_missions = [
         m for m in missions
-        if m["status"] == "pending"
+        if m["status"] in ("pending", "in_progress")
     ]
+
 
     waiting_missions = [
         m for m in missions
@@ -37,12 +38,9 @@ def dashboard():
     total_missions = len(missions)
     total_points = user["points"]
 
-    waiting_count = 0
-    waiting = []
+    waiting = mission_service.get_waiting_validations_for_user(user.id)
+    waiting_count = len(waiting)
 
-    if user["role"] == "admin":
-        waiting = mission_service.get_waiting_validations()
-        waiting_count = len(waiting)
 
 
     completed_missions = [

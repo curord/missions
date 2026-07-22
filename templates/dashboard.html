@@ -23,12 +23,12 @@
                             <div>
                                 <h5 class="fw-bold mb-1">{{ mission.title }}</h5>
                                 <p class="mb-0 text-muted" style="font-size: 0.9rem;">
-                                    <strong>Motiu:</strong> {{ mission.comment or "Revisió no superada" }}
+                                    <strong>Motiu del retorn:</strong> {{ mission.comment or "Revisió no superada" }}
                                 </p>
                                 <small class="text-muted d-block mt-1">Rebutjada el {{ mission.validated_date or mission.validated_at }}</small>
                             </div>
                             <div class="ms-auto">
-                                <form method="POST" action="{{ url_for('missions.complete', assignment_id=mission.id) }}">
+                                <form method="POST" action="{{ url_for('missions.retry', assignment_id=mission.id) }}">
                                     <button class="btn btn-warning btn-sm fw-bold px-3" style="border-radius: 8px;">
                                         🔄 Tornar a completar
                                     </button>
@@ -43,65 +43,30 @@
 </div>
 {% endif %}
 
-{% if user.role == "admin" %}
-
-<div class="card-ui admin-card">
-
+{% if waiting and waiting_count > 0 %}
+<div class="card-ui admin-card mb-4">
     <div class="admin-card-info">
-
-        <h2>⏳ Pendents de validar</h2>
-
-        <p>{{ waiting_count }} missions esperen revisió</p>
-        
-
-        {% if user.role == "admin" %}
-
-            <section class="section">
-
-                <div class="mission-grid">
-
-                    {% for mission in waiting %}
-
-                           {% include "components/validation_card.html" %}
-
-
-                    {% else %}
-
-                        <div class="empty-state">
-                            No hi ha missions pendents de validar.
-                        </div>
-
-                    {% endfor %}
-
-                </div>
-
-            </section>
-
-            {% endif %}
-
+        <h2>⏳ Pendents de validar ({{ waiting_count }})</h2>
+        <p>Missions d'altres membres que esperen la teva revisió</p>
+        <section class="section">
+            <div class="mission-grid">
+                {% for mission in waiting %}
+                    {% include "components/validation_card.html" %}
+                {% endfor %}
+            </div>
+        </section>
     </div>
-
-    <button
-        class="btn-ui btn-primary-ui"
-        id="open-validations"
-    >
-        Obrir
-    </button>
-
 </div>
-
 {% endif %}
 
 <section class="section">
 
     <details open>
-
         <summary>
-            📋 Missions pendents ({{ pending_missions|length }})
+            📋 Les meves missions pendents ({{ pending_missions|length }})
         </summary>
 
         <div class="mission-grid">
-
             {% for mission in pending_missions %}
                 {% include "components/mission_card.html" %}
             {% else %}
@@ -109,20 +74,15 @@
                     No tens missions pendents.
                 </div>
             {% endfor %}
-
         </div>
-
     </details>
 
-
     <details open>
-
         <summary>
             🕒 Esperant validació ({{ waiting_missions|length }})
         </summary>
 
         <div class="mission-grid">
-
             {% for mission in waiting_missions %}
                 {% include "components/mission_card.html" %}
             {% else %}
@@ -130,30 +90,7 @@
                     No hi ha missions esperant validació.
                 </div>
             {% endfor %}
-
         </div>
-
-    </details>
-
-
-    <details>
-
-        <summary>
-            🏆 Missions completades ({{ completed_missions|length }})
-        </summary>
-
-        <div class="mission-grid">
-
-            {% for mission in completed_missions %}
-                {% include "components/mission_card.html" %}
-            {% else %}
-                <div class="empty-state">
-                    Encara no hi ha missions completades.
-                </div>
-            {% endfor %}
-
-        </div>
-
     </details>
 
     <div class="text-center mt-4 mb-4">
@@ -161,55 +98,7 @@
             📜 Veure historial complet de missions
         </a>
     </div>
-<!--
 
-
-    <h2>🎯 Les missions d'avui</h2>
-
-   <div class="mission-grid">
-
-        {% for mission in pending_missions %}
-
-            {% include "components/mission_card.html" %}
-
-        {% else %}
-
-            <div class="empty-state">
-
-                <div class="icon">🎉</div>
-
-                <h3>No tens missions pendents</h3>
-
-            </div>
-
-        {% endfor %}
-
-    </div>
-
-    {% if waiting_missions %}
-
-    <hr>
-
-    <h2>⏳ Esperant validació</h2>
-
-    <div class="mission-grid">
-
-        {% for mission in waiting_missions %}
-
-            {% if user.role == "admin" %}
-                {% include "components/validation_card.html" %}
-            
-            {% else %}
-
-                {% include "components/mission_card.html" %}
-            {% endif %}
-
-        {% endfor %}
-
-    </div>
-
-    {% endif %}
--->
 </section>
 
 {% endblock %}

@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Gestió de Membres · Administració{% endblock %}
+
+{% block content %}
+
+<section class="section">
+    <div class="page-title d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="fw-bold mb-0">👥 Membres de la Família</h1>
+            <p class="text-muted mb-0">Gestió de perfils de nens i administradors</p>
+        </div>
+        <a href="{{ url_for('admin.user_new') }}" class="btn-ui btn-primary-ui text-decoration-none" style="display: inline-flex; align-items: center; gap: 6px;">
+            ➕ Nou membre
+        </a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} border-0 shadow-sm p-3 mb-4" style="border-radius: 12px; font-weight: bold;">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="card-ui border-0 shadow-sm p-3" style="border-radius: 16px;">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Membre</th>
+                        <th>Rol</th>
+                        <th>Nivell / XP</th>
+                        <th>Monedes</th>
+                        <th>Estat Missions</th>
+                        <th class="text-end">Accions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in family_members %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="fs-2">{{ m.user.avatar or '👤' }}</div>
+                                <div>
+                                    <h5 class="fw-bold mb-0">{{ m.user.name }}</h5>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            {% if m.user.role == 'admin' %}
+                                <span class="badge bg-primary px-3 py-2" style="border-radius: 20px;">👑 Admin</span>
+                            {% else %}
+                                <span class="badge bg-info text-white px-3 py-2" style="border-radius: 20px;">👦 Gamer</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="fw-bold text-dark">Nivell {{ m.user.level }}</span>
+                            <small class="text-muted d-block">{{ m.user.points }} XP</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-warning text-dark fw-bold" style="font-size: 0.9rem;">💰 {{ m.user.coins }}</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border">
+                                {{ m.indicator_icon }} {{ m.indicator_text }}
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <a href="{{ url_for('admin.user_edit', id=m.user.id) }}" class="btn btn-outline-primary btn-sm px-3 fw-bold" style="border-radius: 8px;">
+                                ✏️ Editar perfil
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+{% endblock %}

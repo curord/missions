@@ -1,20 +1,276 @@
 {% extends "base.html" %}
-{% block title %}Administració{% endblock %}
+
+{% block title %}Tauler d'Administració · Missions{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+{% endblock %}
 
 {% block content %}
-<section class="section"> 
-    <div class="container-fluid"> 
-        <h2>⏳ Pendents de validar</h2> 
 
-        <div class="mission-grid">
-            {% for mission in waiting %}
-                {% include "components/admin_mission_card.html" %}
-            {% else %}
-                <div class="empty-state">
-                    <h3>No hi ha missions pendents</h3>
-                </div>
-            {% endfor %}
+<!-- Capçalera del Tauler -->
+<div class="page-title">
+    <div>
+        <h1>👑 Tauler d'Administració</h1>
+        <p class="text-muted mb-0">Gestió global de la família i de les meves missions personals</p>
+    </div>
+</div>
+
+<!-- NOTIFICACIONS PÍNDOLA (Part superior) -->
+{% if waiting_count > 0 or admin_missions.pending_count > 0 or pending_deliveries_count > 0 %}
+<div class="notification-pills-container">
+    {% if waiting_count > 0 %}
+    <a href="#card-validations" class="notification-pill pill-danger">
+        🔴 {{ waiting_count }} {{ 'validació pendent' if waiting_count == 1 else 'validacions pendents' }}
+    </a>
+    {% endif %}
+
+    {% if admin_missions.pending_count > 0 %}
+    <a href="#card-my-missions" class="notification-pill pill-warning">
+        🟠 {{ admin_missions.pending_count }} {{ 'missió personal pendent' if admin_missions.pending_count == 1 else 'missions personals pendents' }}
+    </a>
+    {% endif %}
+
+    {% if pending_deliveries_count > 0 %}
+    <a href="{{ url_for('rewards.admin_rewards') }}" class="notification-pill pill-success">
+        🟢 {{ pending_deliveries_count }} {{ 'recompensa pendent de lliurar' if pending_deliveries_count == 1 else 'recompenses pendents de lliurar' }}
+    </a>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- GRAELLA DE 4 TARGETES (1 col mòbil / 2 col tauleta / 4 col escriptori) -->
+<div class="admin-dashboard-grid">
+
+    <!-- TARGETA 1: ✅ Validacions pendents -->
+    <div class="dashboard-card" id="card-validations">
+        <div>
+            <div class="dashboard-card-header">
+                <h2 class="dashboard-card-title">
+                    ✅ Validacions pendents
+                </h2>
+                <span class="badge bg-danger rounded-pill fs-6">{{ waiting_count }}</span>
+            </div>
+
+            <div class="dashboard-card-body">
+                {% if waiting %}
+                    {% for mission in waiting[:3] %}
+                    <div class="validation-item-mini">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <div class="fw-bold text-dark">
+                                {{ mission.icon or "🎯" }} {{ mission.title }}
+                            </div>
+                            <small class="badge bg-secondary">
+                                {{ mission.completed_date or mission.time_ago }}
+                            </small>
+                        </div>
+                        
+                        <div class="small text-muted mb-2">
+                            👤 <strong>{{ mission.gamer_name or mission.completed_by_name or 'Membre' }}</strong>
+                        </div>
+
+                        <div class="d-flex gap-1">
+                            <form method="POST" action="{{ url_for('missions.approve', assignment_id=mission.assignment_id) }}" class="flex-fill">
+                                <button type="submit" class="btn btn-success btn-sm w-100 fw-bold px-1" style="font-size: 0.8rem;">
+                                    ✔ Aprovar
+                                </button>
+                            </form>
+                            
+                            <form method="POST" action="{{ url_for('missions.reject', assignment_id=mission.assignment_id) }}" 
+                                  onsubmit="const r = prompt('Motiu del retorn:'); if (!r) return false; this.reason.value = r;" class="flex-fill">
+                                <input type="hidden" name="reason">
+                                <button type="submit" class="btn btn-outline-danger btn-sm w-100 fw-bold px-1" style="font-size: 0.8rem;">
+                                    ✖ Rebutjar
+                                </button>
+                            </form>
+
+                            <button type="button" class="btn btn-light btn-sm fw-bold border px-2" style="font-size: 0.8rem;" 
+                                    title="Veure detall" data-bs-toggle="modal" data-bs-target="#modal-validation-{{ mission.assignment_id }}">
+                                👁 Veure
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Modal Detall Validació -->
+                    <div class="modal fade" id="modal-validation-{{ mission.assignment_id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content rounded-4 border-0 shadow">
+                                <div class="modal-header border-0 pb-0">
+                                    <h5 class="modal-title fw-bold">👁 Detall de la Validació</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tancar"></button>
+                                </div>
+                                <div class="modal-content-body p-4">
+                                    <div class="text-center mb-3">
+                                        <div class="display-4">{{ mission.icon or "🎯" }}</div>
+                                        <h4 class="fw-bold mt-2">{{ mission.title }}</h4>
+                                        <p class="text-muted">{{ mission.description or 'Sense descripció addicional' }}</p>
+                                    </div>
+                                    <ul class="list-group list-group-flush rounded-3 border mb-3">
+                                        <li class="list-group-item d-flex justify-content-between">
+                                            <span>Membre:</span> <strong>{{ mission.gamer_name }}</strong>
+                                        </li>
+                                        <li class="list-group-item d-flex justify-content-between">
+                                            <span>Recompensa XP:</span> <strong class="text-primary">+{{ mission.points }} XP</strong>
+                                        </li>
+                                        <li class="list-group-item d-flex justify-content-between">
+                                            <span>Data de finalització:</span> <strong>{{ mission.completed_date or mission.time_ago }}</strong>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div class="modal-footer border-0 pt-0">
+                                    <button type="button" class="btn btn-secondary rounded-3" data-bs-dismiss="modal">Tancar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                    {% if waiting|length > 3 %}
+                    <div class="text-center mt-1">
+                        <small class="text-muted">+ {{ waiting|length - 3 }} validacions pendents més</small>
+                    </div>
+                    {% endif %}
+                {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <div class="fs-1 mb-2">🎉</div>
+                        <p class="fw-bold mb-0">Tot està validat.</p>
+                        <small class="text-secondary">No hi ha tasques esperant revisió.</small>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="mt-3">
+            <a href="{{ url_for('dashboard.dashboard') }}" class="btn btn-outline-primary btn-sm w-100 fw-bold" style="border-radius: 10px;">
+                📋 Veure totes les validacions
+            </a>
         </div>
     </div>
-</section>
+
+    <!-- TARGETA 2: 🎯 Les meves missions -->
+    <div class="dashboard-card" id="card-my-missions">
+        <div>
+            <div class="dashboard-card-header">
+                <h2 class="dashboard-card-title">
+                    🎯 Les meves missions
+                </h2>
+                <span class="badge bg-primary rounded-pill fs-6">{{ admin_missions.pending_count }}</span>
+            </div>
+
+            <div class="dashboard-card-body">
+                <div class="d-flex flex-column gap-2 mb-3">
+                    <div class="d-flex justify-content-between align-items-center p-2 rounded-3 bg-light border">
+                        <span class="fw-semibold">🟠 Pendents:</span>
+                        <span class="badge bg-warning text-dark fw-bold">{{ admin_missions.pending_count }}</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center p-2 rounded-3 bg-light border">
+                        <span class="fw-semibold">🕒 Pendents de validar:</span>
+                        <span class="badge bg-info text-dark fw-bold">{{ admin_missions.waiting_count }}</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center p-2 rounded-3 bg-light border">
+                        <span class="fw-semibold">🟢 Completades avui:</span>
+                        <span class="badge bg-success fw-bold">{{ admin_missions.completed_today_count }}</span>
+                    </div>
+                </div>
+
+                {% if admin_missions.pending %}
+                    <div class="small fw-bold text-muted mb-1">Missions pendents d'avui:</div>
+                    {% for m in admin_missions.pending[:2] %}
+                    <div class="p-2 mb-1 rounded-3 bg-light border d-flex align-items-center gap-2">
+                        <span>{{ m.icon or '🎯' }}</span>
+                        <span class="fw-semibold text-truncate small">{{ m.title }}</span>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="mt-3">
+            <a href="{{ url_for('dashboard.dashboard') }}" class="btn btn-primary btn-sm w-100 fw-bold py-2" style="border-radius: 10px; background: var(--primary); border: none;">
+                Obrir les meves missions
+            </a>
+        </div>
+    </div>
+
+    <!-- TARGETA 3: 👨‍👩‍👧 Estat de la família -->
+    <div class="dashboard-card" id="card-family-status">
+        <div>
+            <div class="dashboard-card-header">
+                <h2 class="dashboard-card-title">
+                    👨‍👩‍👧 Estat de la família
+                </h2>
+                <span class="badge bg-secondary rounded-pill fs-6">{{ family_members|length }}</span>
+            </div>
+
+            <div class="dashboard-card-body">
+                {% for member in family_members %}
+                <a href="{{ url_for('dashboard.dashboard') }}" class="member-item-row" title="Obrir el seu Dashboard">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="fs-4">{{ member.user.avatar or '👤' }}</div>
+                        <div>
+                            <div class="fw-bold text-dark mb-0">{{ member.user.name }}</div>
+                            <small class="text-muted" style="font-size: 0.75rem;">
+                                Nivell {{ member.user.level }} · {{ member.user.points }} XP · {{ member.user.coins }} 💰
+                            </small>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <span class="fs-5" title="{{ member.indicator_text }}">
+                            {{ member.indicator_icon }}
+                        </span>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="mt-3">
+            <a href="{{ url_for('admin.users_list') }}" class="btn btn-outline-secondary btn-sm w-100 fw-bold" style="border-radius: 10px;">
+                👥 Gestió dels membres
+            </a>
+        </div>
+    </div>
+
+    <!-- TARGETA 4: ⚡ Accions ràpides -->
+    <div class="dashboard-card" id="card-quick-actions">
+        <div>
+            <div class="dashboard-card-header">
+                <h2 class="dashboard-card-title">
+                    ⚡ Accions ràpides
+                </h2>
+            </div>
+
+            <div class="dashboard-card-body">
+                <div class="quick-actions-list">
+                    <a href="{{ url_for('admin.mission_new') }}" class="quick-action-btn btn-primary-action">
+                        <span>➕ Nova missió</span>
+                    </a>
+
+                    <a href="{{ url_for('admin.missions') }}" class="quick-action-btn btn-success-action">
+                        <span>📋 Assignar missió</span>
+                    </a>
+
+                    <a href="{{ url_for('rewards.admin_reward_new') }}" class="quick-action-btn btn-purple-action">
+                        <span>🎁 Nova recompensa</span>
+                    </a>
+
+                    <a href="{{ url_for('admin.user_new') }}" class="quick-action-btn btn-amber-action">
+                        <span>👤 Nou membre</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="mt-3">
+            <a href="{{ url_for('admin.settings') }}" class="btn btn-light btn-sm w-100 border text-muted fw-semibold" style="border-radius: 10px;">
+                ⚙️ Configuració global
+            </a>
+        </div>
+    </div>
+
+</div>
+
 {% endblock %}

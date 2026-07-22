@@ -108,11 +108,18 @@ class MissionRepository:
         """
         return database.count_waiting_validations()
 
+    def start_mission(self, assignment_id: int, user_id: int) -> None:
+        """
+        Marca una assignació com a iniciada (en curs).
+        """
+        database.start_mission(assignment_id, user_id)
+
     def complete_mission(self, assignment_id: int, user_id: int) -> None:
         """
         Marca una assignació com a pendent de validació.
         """
         database.complete_mission(assignment_id, user_id)
+
 
     def approve_mission(self, assignment_id: int, admin_id: int) -> bool:
         """
@@ -120,11 +127,12 @@ class MissionRepository:
         """
         return database.approve_mission(assignment_id, admin_id)
 
-    def reject_mission(self, assignment_id: int, reason: Optional[str] = None) -> None:
+    def reject_mission(self, assignment_id: int, admin_id: Optional[int] = None, reason: Optional[str] = None) -> None:
         """
-        Rebutja la validació d'una missió i en registra el motiu.
+        Rebutja la validació d'una missió i en registra el motiu i el validador.
         """
-        database.reject_mission(assignment_id, reason)
+        database.reject_mission(assignment_id, admin_id, reason)
+
 
 
     def assign_mission(self, mission_id: int, user_id: int, assignment_type: str = "owner") -> int:
@@ -274,7 +282,9 @@ class MissionRepository:
             color=row.get("color"),
             category_icon=row.get("category_icon"),
             completed_by_name=row.get("completed_by_name"),
+            validated_by_name=row.get("validated_by_name"),
             gamer_name=row.get("gamer_name"),
             time_ago=row.get("time_ago"),
             completed_date=row.get("completed_date")
         )
+

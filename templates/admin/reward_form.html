@@ -58,6 +58,21 @@
             >
         </div>
 
+        <div class="mb-3">
+            <label class="form-label fw-bold">Icona / Emoji</label>
+            <select name="icon" class="form-select" style="border-radius: 8px;">
+                <option value="🎁" {% if not reward or reward.icon == '🎁' %}selected{% endif %}>🎁 Regal</option>
+                <option value="📱" {% if reward and reward.icon == '📱' %}selected{% endif %}>📱 Mòbil / Pantalla</option>
+                <option value="🎮" {% if reward and reward.icon == '🎮' %}selected{% endif %}>🎮 Videojoc</option>
+                <option value="🍦" {% if reward and reward.icon == '🍦' %}selected{% endif %}>🍦 Gelat / Berenar</option>
+                <option value="🍿" {% if reward and reward.icon == '🍿' %}selected{% endif %}>🍿 Cinema / Palometes</option>
+                <option value="🚲" {% if reward and reward.icon == '🚲' %}selected{% endif %}>🚲 Sortida / Excursió</option>
+                <option value="🧸" {% if reward and reward.icon == '🧸' %}selected{% endif %}>🧸 Joguina</option>
+                <option value="⭐" {% if reward and reward.icon == '⭐' %}selected{% endif %}>⭐ Premi Especial</option>
+            </select>
+        </div>
+
+
         <div class="full mb-3">
             <label class="form-label fw-bold">Descripció</label>
             <textarea

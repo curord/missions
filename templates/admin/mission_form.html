@@ -264,26 +264,20 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 
-<div class="form-actions">
-
-
-    <a
-        href="{{ url_for('admin.missions') }}"
-        class="btn-ui"
-    >
+<div class="form-actions d-flex gap-2">
+    <a href="{{ url_for('admin.missions') }}" class="btn-ui">
         Cancel·lar
     </a>
 
-    <button
-        class="btn-ui btn-primary-ui"
-        type="submit"
-    >
-
-        💾 Desar missió
-
+    <button class="btn btn-outline-secondary px-3 py-2 fw-bold" type="submit" name="is_draft" value="1" style="border-radius: 12px;">
+        📝 Desar com a esborrany
     </button>
 
+    <button class="btn-ui btn-primary-ui" type="submit" name="is_draft" value="0">
+        💾 Desar i publicar
+    </button>
 </div>
+
 
 </form>
 

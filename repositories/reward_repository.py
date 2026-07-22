@@ -59,14 +59,15 @@ class RewardRepository:
         """
         new_id = database.execute(
             """
-            INSERT INTO rewards (family_id, name, description, points_required, active)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO rewards (family_id, name, description, points_required, icon, active)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
             (
                 reward.family_id,
                 reward.name,
                 reward.description,
                 reward.points_required,
+                reward.icon or "🎁",
                 reward.active
             )
         )
@@ -82,13 +83,14 @@ class RewardRepository:
         database.execute(
             """
             UPDATE rewards
-            SET name = ?, description = ?, points_required = ?, active = ?
+            SET name = ?, description = ?, points_required = ?, icon = ?, active = ?
             WHERE id = ?
             """,
             (
                 reward.name,
                 reward.description,
                 reward.points_required,
+                reward.icon or "🎁",
                 reward.active,
                 reward.id
             )
@@ -104,8 +106,10 @@ class RewardRepository:
             name=row.get("name"),
             description=row.get("description"),
             points_required=row.get("points_required"),
+            icon=row.get("icon") or "🎁",
             active=row.get("active", 1)
         )
+
 
     def disable(self, reward_id: int) -> None:
         """

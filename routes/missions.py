@@ -1,7 +1,7 @@
-from flask import Blueprint, render_template, redirect, session, url_for
+from flask import Blueprint, render_template, redirect, session, url_for, request
 from services.user_service import UserService
 from services.mission_service import MissionService
-
+import database
 import logging
 
 missions_bp = Blueprint("missions", __name__)
@@ -32,6 +32,21 @@ def missions():
     )
 
 
+@missions_bp.post("/mission/<int:assignment_id>/start")
+def start(assignment_id):
+    """
+    Marca una missió assignada com en curs ('in_progress') per l'usuari actual.
+    """
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+
+    mission_service.start_mission(
+        assignment_id,
+        session["user_id"]
+    )
+
+    return redirect(url_for("dashboard.dashboard"))
+
 
 @missions_bp.post("/mission/<int:assignment_id>/complete")
 def complete(assignment_id):
@@ -45,6 +60,70 @@ def complete(assignment_id):
         assignment_id,
         session["user_id"]
     )
+
+    return redirect(url_for("dashboard.dashboard"))
+
+
+
+@missions_bp.post("/mission/<int:assignment_id>/retry")
+def retry(assignment_id):
+    """
+    Torna una missió rebutjada a l'estat 'pending' per a permetre-li reintentar-la.
+    """
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+
+    mission_service.retry_rejected_mission(
+        assignment_id,
+        session["user_id"]
+    )
+
+    return redirect(url_for("dashboard.dashboard"))
+
+
+
+@missions_bp.post("/mission/<int:assignment_id>/approve")
+def approve(assignment_id):
+    """
+    Aprova la validació d'una missió si l'usuari en sessió té permís.
+    """
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+
+    user = user_service.get_user_by_id(session["user_id"])
+    if not user:
+        session.clear()
+        return redirect(url_for("auth.login"))
+
+    assignment_row = database.query_one("SELECT * FROM mission_assignments WHERE id = ?", (assignment_id,))
+    if assignment_row:
+        assignment_obj = mission_service.mission_repo._map_to_assignment(assignment_row)
+        if mission_service.can_user_validate_assignment(user, assignment_obj):
+            mission_service.approve_mission(assignment_id, user.id)
+
+    return redirect(url_for("dashboard.dashboard"))
+
+
+@missions_bp.post("/mission/<int:assignment_id>/reject")
+def reject(assignment_id):
+    """
+    Rebutja la validació d'una missió si l'usuari en sessió té permís.
+    """
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+
+    user = user_service.get_user_by_id(session["user_id"])
+    if not user:
+        session.clear()
+        return redirect(url_for("auth.login"))
+
+    assignment_row = database.query_one("SELECT * FROM mission_assignments WHERE id = ?", (assignment_id,))
+    if assignment_row:
+        assignment_obj = mission_service.mission_repo._map_to_assignment(assignment_row)
+        if mission_service.can_user_validate_assignment(user, assignment_obj):
+            reason = request.form.get("reason")
+            mission_service.reject_mission(assignment_id, reason=reason, admin_id=user.id)
+
 
     return redirect(url_for("dashboard.dashboard"))
 
@@ -70,6 +149,7 @@ def history():
         user=user,
         history=history
     )
+
 
 
 

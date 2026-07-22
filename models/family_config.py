@@ -3,29 +3,28 @@ from typing import Any, Dict, Optional
 
 
 @dataclass
-class Reward:
+class FamilyConfig:
     """
-    Representa una recompensa bescanviable per punts (ex. temps de pantalla, berenar especial).
+    Representa els paràmetres de configuració d'una família.
     """
 
     family_id: int
-    name: str
-    points_required: int
-    id: Optional[int] = None
-    description: Optional[str] = None
-    icon: str = "🎁"
-    active: int = 1
+    auto_approve_admin_missions: bool = False
+    rewards_require_delivery: bool = True
+    count_weekends_streaks: bool = True
+    admin_validation_mode: str = "admin_only"
+    updated_at: Optional[str] = None
 
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Retorna la representació en diccionari de la recompensa.
+        Retorna la representació en diccionari de la configuració.
         """
         return asdict(self)
 
     def __getitem__(self, key: str) -> Any:
         """
-        Permet l'accés estil diccionari per a compatibilitat retroactiva.
+        Permet l'accés estil diccionari per a compatibilitat.
         """
         if hasattr(self, key):
             return getattr(self, key)
@@ -39,7 +38,7 @@ class Reward:
 
     def __contains__(self, key: str) -> bool:
         """
-        Comprova si el camp existeix en la instància.
+        Comprova si el camp existeix a la instància.
         """
         return hasattr(self, key)
 
@@ -51,4 +50,3 @@ class Reward:
 
     def items(self) -> Any:
         return self.to_dict().items()
-

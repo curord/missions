@@ -34,9 +34,11 @@ class Assignment:
     color: Optional[str] = None
     category_icon: Optional[str] = None
     completed_by_name: Optional[str] = None
+    validated_by_name: Optional[str] = None
     gamer_name: Optional[str] = None
     time_ago: Optional[str] = None
     completed_date: Optional[str] = None
+
 
     @property
     def assignment_id(self) -> Optional[int]:

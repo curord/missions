@@ -1,7 +1,9 @@
-from flask import Blueprint, render_template, session, redirect, url_for, request, g
+from flask import Blueprint, render_template, session, redirect, url_for, request, g, flash
 from config import Config
 from services.user_service import UserService
 from services.mission_service import MissionService
+from services.family_config_service import FamilyConfigService
+from services.reward_service import RewardService
 import logging
 import database
 
@@ -9,6 +11,10 @@ ADMIN_PIN = Config.ADMIN_PIN
 admin_bp = Blueprint("admin", __name__)
 user_service = UserService()
 mission_service = MissionService()
+config_service = FamilyConfigService()
+reward_service = RewardService()
+
+
 
 
 def sync_mission_assignments(mission_id, target_user_ids):
@@ -86,32 +92,56 @@ def admin():
 
         return render_template("admin_pin.html")
 
-    waiting = mission_service.get_waiting_validations()
+    waiting = mission_service.get_waiting_validations_for_user(g.user["id"])
+    waiting_count = len(waiting)
+
+    # 1. Missions personals de l'admin
+    admin_missions = mission_service.get_admin_personal_missions_summary(g.user["id"])
+
+    # 2. Estat de la família
+    family_members = user_service.get_family_status_summary(g.user["family_id"])
+
+    # 3. Notificacions píndola
+    pending_deliveries_count = reward_service.get_pending_deliveries_count(g.user["family_id"])
 
     return render_template(
         "admin.html",
         user=g.user,
-        waiting=waiting
+        waiting=waiting,
+        waiting_count=waiting_count,
+        admin_missions=admin_missions,
+        family_members=family_members,
+        pending_deliveries_count=pending_deliveries_count
     )
+
 
 
 @admin_bp.post("/admin/mission/<int:assignment_id>/approve")
 def approve(assignment_id):
     """
-    Aprova la finalització d'una missió i atorga els punts/monedes al gamer.
+    Aprova la finalització d'una missió i atorga els punts/monedes si l'usuari té permís.
     """
-    mission_service.approve_mission(assignment_id, session["user_id"])
+    assignment_row = database.query_one("SELECT * FROM mission_assignments WHERE id = ?", (assignment_id,))
+    if assignment_row:
+        assignment_obj = mission_service.mission_repo._map_to_assignment(assignment_row)
+        if mission_service.can_user_validate_assignment(g.user, assignment_obj):
+            mission_service.approve_mission(assignment_id, session["user_id"])
     return redirect(url_for("admin.admin"))
 
 
 @admin_bp.post("/admin/mission/<int:assignment_id>/reject")
 def reject(assignment_id):
     """
-    Rebutja la validació d'una missió, registrant-ne el motiu de devolució.
+    Rebutja la validació d'una missió si l'usuari té permís.
     """
-    reason = request.form.get("reason")
-    mission_service.reject_mission(assignment_id, reason)
+    assignment_row = database.query_one("SELECT * FROM mission_assignments WHERE id = ?", (assignment_id,))
+    if assignment_row:
+        assignment_obj = mission_service.mission_repo._map_to_assignment(assignment_row)
+        if mission_service.can_user_validate_assignment(g.user, assignment_obj):
+            reason = request.form.get("reason")
+            mission_service.reject_mission(assignment_id, reason)
     return redirect(url_for("admin.admin"))
+
 
 
 
@@ -193,19 +223,26 @@ def mission_new():
     Renderitza el formulari de creació o processa la creació d'una nova plantilla de missió.
     """
     if request.method == "POST":
-        mission_id = mission_service.create_mission(request.form, family_id=g.user["family_id"])
+        is_draft = request.form.get("is_draft") == "1"
+        form_data = request.form.to_dict()
+        if is_draft:
+            form_data["active"] = "0"
 
-        # Sincronitzar assignacions de membres de la família
-        assignee_type = request.form.get("assignee_type")
-        if assignee_type == "all":
-            members = [u.id for u in user_service.get_family_users(g.user["family_id"])]
-            sync_mission_assignments(mission_id, members)
-        else:
-            selected_users = [int(uid) for uid in request.form.getlist("assigned_users")]
-            sync_mission_assignments(mission_id, selected_users)
+        mission_id = mission_service.create_mission(form_data, family_id=g.user["family_id"])
 
+        if not is_draft:
+            # Sincronitzar assignacions de membres de la família només si no és esborrany
+            assignee_type = request.form.get("assignee_type")
+            if assignee_type == "all":
+                members = [u.id for u in user_service.get_family_users(g.user["family_id"])]
+                sync_mission_assignments(mission_id, members)
+            else:
+                selected_users = [int(uid) for uid in request.form.getlist("assigned_users")]
+                sync_mission_assignments(mission_id, selected_users)
 
+        flash("Missió guardada com a esborrany (inactiva)!" if is_draft else "Missió creada i assignada correctament!", "success")
         return redirect(url_for("admin.missions"))
+
 
     categories = mission_service.get_categories()
     users = user_service.get_family_users()
@@ -240,4 +277,129 @@ def mission_edit(id):
         categories=categories,
         users=users,
         assigned_user_ids=assigned_user_ids
-    )
+    )
+
+
+@admin_bp.route("/admin/settings", methods=["GET", "POST"])
+def settings():
+    """
+    Gestió de la configuració familiar de l'administració.
+    """
+    if not session.get("admin_verified"):
+        return redirect(url_for("admin.admin"))
+
+    family_id = g.user.get("family_id", 1)
+
+    if request.method == "POST":
+        auto_approve = request.form.get("auto_approve_admin_missions") == "on"
+        rewards_delivery = request.form.get("rewards_require_delivery") == "on"
+        count_weekends = request.form.get("count_weekends_streaks") == "on"
+        val_mode = request.form.get("admin_validation_mode", "admin_only")
+
+        config_service.update_config(
+            family_id=family_id,
+            auto_approve_admin_missions=auto_approve,
+            rewards_require_delivery=rewards_delivery,
+            count_weekends_streaks=count_weekends,
+            admin_validation_mode=val_mode
+        )
+        flash("Configuració familiar actualitzada correctament! ⚙️", "success")
+        return redirect(url_for("admin.settings"))
+
+
+    config = config_service.get_config(family_id)
+
+    return render_template(
+        "admin/settings.html",
+        user=g.user,
+        config=config
+    )
+
+
+@admin_bp.get("/admin/users")
+def users_list():
+    """
+    Llista tots els membres de la família per a l'administració.
+    """
+    if not session.get("admin_verified"):
+        return redirect(url_for("admin.admin"))
+
+    family_id = g.user.get("family_id", 1)
+    family_members = user_service.get_family_status_summary(family_id)
+
+    return render_template(
+        "admin/users.html",
+        user=g.user,
+        family_members=family_members
+    )
+
+
+@admin_bp.route("/admin/users/new", methods=["GET", "POST"])
+def user_new():
+    """
+    Creació d'un nou membre de la família (Gamer o Administrador).
+    """
+    if not session.get("admin_verified"):
+        return redirect(url_for("admin.admin"))
+
+    family_id = g.user.get("family_id", 1)
+
+    if request.method == "POST":
+        name = request.form.get("name")
+        role = request.form.get("role", "child")
+        avatar = request.form.get("avatar", "👤")
+        color = request.form.get("favorite_color", "#3b82f6")
+
+        if name:
+            user_service.create_user(
+                family_id=family_id,
+                name=name,
+                role=role,
+                avatar=avatar,
+                favorite_color=color
+            )
+            flash(f"Membre '{name}' afegit a la família correctament! 👤", "success")
+            return redirect(url_for("admin.users_list"))
+
+    return render_template(
+        "admin/user_form.html",
+        user=g.user,
+        member=None
+    )
+
+
+@admin_bp.route("/admin/users/<int:id>/edit", methods=["GET", "POST"])
+def user_edit(id):
+    """
+    Edició d'un membre existent de la família.
+    """
+    if not session.get("admin_verified"):
+        return redirect(url_for("admin.admin"))
+
+    member = user_service.get_user_by_id(id)
+    if not member:
+        flash("Membre no trobat!", "danger")
+        return redirect(url_for("admin.users_list"))
+
+    if request.method == "POST":
+        name = request.form.get("name")
+        role = request.form.get("role", "child")
+        avatar = request.form.get("avatar", "👤")
+        color = request.form.get("favorite_color", "#3b82f6")
+
+        if name:
+            user_service.update_user(
+                user_id=id,
+                name=name,
+                role=role,
+                avatar=avatar,
+                favorite_color=color
+            )
+            flash(f"Membre '{name}' actualitzat correctament! 👤", "success")
+            return redirect(url_for("admin.users_list"))
+
+    return render_template(
+        "admin/user_form.html",
+        user=g.user,
+        member=member
+    )

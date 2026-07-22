@@ -32,6 +32,19 @@ class UserRepository:
         user_rows = database.get_family_users(family_id)
         return [self._map_to_entity(row) for row in user_rows]
 
+    def create(self, family_id: int, name: str, role: str, avatar: str = "👤", favorite_color: str = "#3b82f6") -> int:
+        """
+        Crea un nou membre de la família.
+        """
+        return database.create_user(family_id, name, role, avatar, favorite_color)
+
+    def update(self, user_id: int, name: str, role: str, avatar: str = "👤", favorite_color: str = "#3b82f6") -> bool:
+        """
+        Actualitza les dades d'un membre existent.
+        """
+        return database.update_user(user_id, name, role, avatar, favorite_color)
+
+
     def _map_to_entity(self, row: dict) -> User:
         """
         Mapeja una fila de la base de dades (diccionari) a una entitat User.

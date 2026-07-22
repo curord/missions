@@ -196,7 +196,39 @@ def execute_script(filename):
             conn.executescript(script)
 
 
+def ensure_reward_delivery_schema():
+    """
+    S'assegura que la taula rewards i reward_history tenen les columnes d'icona i auditoria de lliurament.
+    """
+    try:
+        execute("ALTER TABLE rewards ADD COLUMN icon TEXT DEFAULT '🎁'")
+    except Exception:
+        pass
+
+    try:
+        execute("ALTER TABLE reward_history ADD COLUMN delivered_by INTEGER")
+    except Exception:
+        pass
+
+    try:
+        execute("ALTER TABLE reward_history ADD COLUMN delivered_at DATETIME")
+    except Exception:
+        pass
+
+    try:
+        execute("ALTER TABLE reward_history ADD COLUMN comment TEXT")
+    except Exception:
+        pass
+
+# Executar automàticament al carregar la base de dades
+try:
+    ensure_reward_delivery_schema()
+except Exception:
+    pass
+
+
 def table_exists(table_name):
+
     """
     Comprova si existeix una taula.
     """
@@ -229,7 +261,28 @@ def count(table_name):
     return row["total"]
 
 
+def create_user(family_id, name, role, avatar="👤", favorite_color="#3b82f6"):
+    return execute(
+        """
+        INSERT INTO users (family_id, name, role, avatar, favorite_color)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (family_id, name, role, avatar, favorite_color)
+    )
+
+def update_user(user_id, name, role, avatar="👤", favorite_color="#3b82f6"):
+    execute(
+        """
+        UPDATE users
+        SET name = ?, role = ?, avatar = ?, favorite_color = ?
+        WHERE id = ?
+        """,
+        (name, role, avatar, favorite_color, user_id)
+    )
+    return True
+
 def get_user(user_id):
+
     """
     Retorna un usuari.
     """
@@ -332,10 +385,22 @@ def get_user_missions(user_id):
         (user_id,)
     )
 
+def start_mission(assignment_id, user_id):
+    """
+    Inicia una missió assignada passant el seu estat de 'pending' a 'in_progress'.
+    """
+    execute(
+        """
+        UPDATE mission_assignments
+        SET status = 'in_progress'
+        WHERE id = ? AND user_id = ? AND status = 'pending'
+        """,
+        (assignment_id, user_id)
+    )
+    return True
+
 def complete_mission(assignment_id, user_id):
-     logging.info("complete_mission - ASSIGNMENT: %s", assignment_id)
-     logging.info("complete_mission - USER: %s", user_id)
-     execute(
+    execute(
         """
         UPDATE mission_assignments
         SET
@@ -344,7 +409,7 @@ def complete_mission(assignment_id, user_id):
             completed_by=?
         WHERE id=?
           AND user_id=?
-          AND status='pending'
+          AND status IN ('pending', 'in_progress', 'rejected')
         """,
         (
             "waiting_validation",
@@ -353,6 +418,20 @@ def complete_mission(assignment_id, user_id):
             assignment_id,
             user_id
         )
+    )
+
+
+def retry_rejected_mission(assignment_id, user_id):
+    """
+    Torna una missió rebutjada a l'estat 'pending' per a poder-la reintentar.
+    """
+    execute(
+        """
+        UPDATE mission_assignments
+        SET status = 'pending', comment = NULL
+        WHERE id = ? AND user_id = ? AND status = 'rejected'
+        """,
+        (assignment_id, user_id)
     )
      
 def get_waiting_validations():
@@ -398,37 +477,24 @@ def get_waiting_validations():
         """
     )
 def approve_mission(assignment_id, admin_id):
-    try:
-        data = query_one(
-            """
-            SELECT
-                ma.user_id,
-                COALESCE(m.points, 10) AS points,
-                COALESCE(m.coins, 0) AS coins
-            FROM mission_assignments ma
-            JOIN missions m
-                ON m.id = ma.mission_id
-            WHERE ma.id = ?
-              AND ma.status = 'waiting_validation'
-            """,
-            (assignment_id,)
-        )
-    except Exception:
-        # Fallback si no existeix la columna 'coins' a la taula 'missions' (SQLite antic)
-        data = query_one(
-            """
-            SELECT
-                ma.user_id,
-                COALESCE(m.points, 10) AS points,
-                (COALESCE(m.points, 10) / 10) AS coins
-            FROM mission_assignments ma
-            JOIN missions m
-                ON m.id = ma.mission_id
-            WHERE ma.id = ?
-              AND ma.status = 'waiting_validation'
-            """,
-            (assignment_id,)
-        )
+    data = query_one(
+        """
+        SELECT
+            ma.user_id,
+            ma.mission_id,
+            ma.assignment_type,
+            COALESCE(m.points, 10) AS points,
+            COALESCE(NULLIF(ma.coins, 0), COALESCE(m.points, 10) / 10) AS coins
+
+        FROM mission_assignments ma
+        JOIN missions m
+            ON m.id = ma.mission_id
+        WHERE ma.id = ?
+          AND ma.status = 'waiting_validation'
+        """,
+        (assignment_id,)
+    )
+
 
     if not data:
         return False
@@ -453,72 +519,57 @@ def approve_mission(assignment_id, admin_id):
         )
     )
 
+    # Si la missió és de tipus Compartida, cancel·lar les assignacions dels altres membres
+    if data.get("assignment_type") == "shared":
+        execute(
+            """
+            UPDATE mission_assignments
+            SET status = 'cancelled', comment = 'Completada per un altre membre de la família'
+            WHERE mission_id = ? AND id <> ? AND status IN ('pending', 'waiting_validation')
+            """,
+            (data["mission_id"], assignment_id)
+        )
+
     # Obtenir els punts actuals per actualitzar el nivell
-    user = query_one("SELECT points FROM users WHERE id = ?", (data["user_id"],))
-    current_points = user["points"] if user else 0
+    user_row = query_one("SELECT points FROM users WHERE id = ?", (data["user_id"],))
+    current_points = user_row["points"] if user_row else 0
     new_points = current_points + data["points"]
     new_level = (new_points // 100) + 1
 
     execute(
-        """
-        UPDATE users
-        SET points = ?, level = ?
-        WHERE id = ?
-        """,
-        (
-            new_points,
-            new_level,
-            data["user_id"]
-        )
+        "UPDATE users SET points = ?, level = ? WHERE id = ?",
+        (new_points, new_level, data["user_id"])
     )
 
+    # Registrar a l'historial de punts
     execute(
-        """
-        INSERT INTO points_history(
-            user_id,
-            mission_id,
-            points,
-            reason
-        )
-        VALUES(
-            ?,
-            (
-                SELECT mission_id
-                FROM mission_assignments
-                WHERE id=?
-            ),
-            ?,
-            'Mission completed'
-        )
-        """,
-        (
-            data["user_id"],
-            assignment_id,
-            data["points"]
-        )
+        "INSERT INTO points_history (user_id, mission_id, points, reason) VALUES (?, ?, ?, ?)",
+        (data["user_id"], data["mission_id"], data["points"], "Missió completada")
     )
+
 
     return True
 
 
-
-
-def reject_mission(assignment_id, reason=None):
-    # Canviem l'estat a 'rejected' i guardem el motiu i la data de validació/rebuig
+def reject_mission(assignment_id, admin_id, comment=None):
     execute(
         """
         UPDATE mission_assignments
-        SET status='rejected',
+        SET
+            status='rejected',
             comment=?,
-            validated_at=?
+            validated_at=?,
+            validated_by=?
         WHERE id=?
         """,
         (
-            reason or "Revisió no superada",
+            comment,
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            admin_id,
             assignment_id
         )
     )
+    return True
 
 
 def count_waiting_validations():
@@ -609,7 +660,7 @@ def get_user_mission_history(user_id):
             ma.completed_at,
             ma.validated_at,
             ma.comment,
-            COALESCE(ma.coins, m.coins, 0) AS coins,
+            COALESCE(ma.coins, COALESCE(m.points, 10) / 10, 0) AS coins,
             COALESCE(ma.completed_points, m.points, 10) AS points,
             m.id AS mission_id,
             m.title,
@@ -618,7 +669,9 @@ def get_user_mission_history(user_id):
             c.name AS category,
             c.color,
             c.icon AS category_icon,
-            u.name AS completed_by_name
+            u.name AS completed_by_name,
+            v.name AS validated_by_name
+
         FROM mission_assignments ma
         INNER JOIN missions m
             ON m.id = ma.mission_id
@@ -626,10 +679,13 @@ def get_user_mission_history(user_id):
             ON c.id = m.category_id
         LEFT JOIN users u
             ON u.id = ma.completed_by
+        LEFT JOIN users v
+            ON v.id = ma.validated_by
         WHERE ma.user_id = ?
           AND ma.status IN ('completed', 'rejected', 'cancelled')
         ORDER BY
             COALESCE(ma.validated_at, ma.completed_at, ma.assigned_date) DESC
         """,
         (user_id,)
-    )
+    )
+

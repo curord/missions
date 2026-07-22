@@ -64,6 +64,62 @@ class UserService:
         self._hydrate_users_in_bulk(users)
         return users
 
+    def create_user(self, family_id: int, name: str, role: str, avatar: str = "👤", favorite_color: str = "#3b82f6") -> int:
+        """
+        Crea un nou membre de la família.
+        """
+        return self.user_repo.create(family_id, name, role, avatar, favorite_color)
+
+    def update_user(self, user_id: int, name: str, role: str, avatar: str = "👤", favorite_color: str = "#3b82f6") -> bool:
+        """
+        Actualitza les dades d'un membre de la família.
+        """
+        return self.user_repo.update(user_id, name, role, avatar, favorite_color)
+
+
+    def get_family_status_summary(self, family_id: int = 1) -> List[dict]:
+        """
+        Retorna la llista de membres d'una família enriquida amb el recompte de les seves missions
+        pendents, les seves validacions pendents i l'indicador d'estat (🟢 / 🟠 / 🔴).
+        """
+        users = self.get_family_users(family_id)
+        summary = []
+        for user in users:
+            pending_rows = database.query(
+                "SELECT COUNT(*) AS total FROM mission_assignments WHERE user_id = ? AND status = 'pending'",
+                (user.id,)
+            )
+            waiting_rows = database.query(
+                "SELECT COUNT(*) AS total FROM mission_assignments WHERE user_id = ? AND status = 'waiting_validation'",
+                (user.id,)
+            )
+            pending_count = pending_rows[0]["total"] if pending_rows else 0
+            waiting_count = waiting_rows[0]["total"] if waiting_rows else 0
+
+            if waiting_count > 0:
+                indicator_color = "red"
+                indicator_icon = "🔴"
+                indicator_text = "Té validacions pendents"
+            elif pending_count > 0:
+                indicator_color = "orange"
+                indicator_icon = "🟠"
+                indicator_text = "Té missions pendents"
+            else:
+                indicator_color = "green"
+                indicator_icon = "🟢"
+                indicator_text = "Sense pendents"
+
+            summary.append({
+                "user": user,
+                "pending_count": pending_count,
+                "waiting_count": waiting_count,
+                "indicator_color": indicator_color,
+                "indicator_icon": indicator_icon,
+                "indicator_text": indicator_text
+            })
+        return summary
+
+
     def calculate_level(self, points: int) -> int:
         """
         Calcula el nivell basant-se en els punts totals d'XP.
@@ -168,16 +224,23 @@ class UserService:
                 continue
 
         # 3. Assignar valors calculats a cada instància
+        from services.family_config_service import FamilyConfigService
+        family_id = users[0].family_id if (users and users[0].family_id) else 1
+        config = FamilyConfigService().get_config(family_id)
+
         for user in users:
             user.level = self.calculate_level(user.points)
             user.level_progress = self.calculate_level_progress(user.points)
             user.coins = coins_map.get(user.id, 0)
             
             user_dates = dates_map.get(user.id, [])
-            user.streak = self._calculate_streak_from_dates(user_dates)
+            user.streak = self._calculate_streak_from_dates(
+                user_dates,
+                count_weekends=config.count_weekends_streaks
+            )
 
 
-    def _calculate_streak_from_dates(self, completed_dates: List[date]) -> int:
+    def _calculate_streak_from_dates(self, completed_dates: List[date], count_weekends: bool = True) -> int:
         """
         Calcula la ratxa consecutiva a partir d'una llista de dates úniques ordenades DESC.
         """
@@ -195,11 +258,27 @@ class UserService:
         current_date = completed_dates[0]
 
         for next_date in completed_dates[1:]:
-            if current_date - next_date == timedelta(days=1):
+            diff = (current_date - next_date).days
+            if diff == 1:
                 streak += 1
                 current_date = next_date
-            elif current_date - next_date > timedelta(days=1):
+            elif not count_weekends:
+                # Comprovar si les dates entremig son només cap de setmana
+                check_date = current_date - timedelta(days=1)
+                all_weekend = True
+                while check_date > next_date:
+                    if check_date.weekday() < 5:
+                        all_weekend = False
+                        break
+                    check_date -= timedelta(days=1)
+                if all_weekend:
+                    streak += 1
+                    current_date = next_date
+                else:
+                    break
+            else:
                 break
 
         return streak
+
 
