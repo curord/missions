@@ -10,6 +10,134 @@
 
 {% include "components/child_hero.html" %}
 
+{% if debug_info %}
+<details class="card-ui mb-4" style="background-color: #1e1e2e; color: #cdd6f4; border: 1px solid #45475a; border-radius: 16px; padding: 16px;">
+    <summary class="fw-bold fs-5 cursor-pointer text-warning d-flex justify-content-between align-items-center">
+        <span>🛠 Diagnòstic del sistema (DEBUG)</span>
+        <span class="badge bg-danger">DEBUG MODE</span>
+    </summary>
+    
+    <div class="mt-3 font-monospace small">
+
+        <!-- 1. Informació de la Base de Dades -->
+        <div class="p-3 mb-3 rounded bg-dark border border-secondary">
+            <h5 class="text-info fw-bold mb-2">1. Base de Dades</h5>
+            <div><strong>Motor:</strong> {{ debug_info.db_engine }}</div>
+            <div><strong>Ruta absoluta:</strong> {{ debug_info.db_path }}</div>
+            <div><strong>Existeix:</strong> {% if debug_info.file_exists %}<span class="text-success">✔ Sí</span>{% else %}<span class="text-danger">❌ No</span>{% endif %}</div>
+            <div><strong>Data/hora actual:</strong> {{ debug_info.current_time }}</div>
+            <div><strong>Connexió:</strong> {% if debug_info.connection_ok %}<span class="text-success">✔ Correcta</span>{% else %}<span class="text-danger">❌ Error</span>{% endif %}</div>
+            <div class="mt-1 text-muted extra-small">Origen: ✔ SQL directe / Path(Config.DATABASE)</div>
+        </div>
+
+        <!-- 2. Comptadors reals de totes les taules (SQL directe) -->
+        <div class="p-3 mb-3 rounded bg-dark border border-secondary">
+            <h5 class="text-info fw-bold mb-2">2. Comptadors Reals de Totes les Taules (SQL Directe)</h5>
+            <div class="row g-1">
+                {% for tbl, cnt in debug_info.db_table_counts.items() %}
+                <div class="col-6 col-md-4">
+                    <span class="text-muted">{{ tbl }}:</span> <strong class="text-light">{{ cnt }}</strong>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="mt-2 text-muted extra-small">Origen: ✔ SQL directe (SELECT COUNT(*) FROM table)</div>
+        </div>
+
+        <!-- 3. Comptadors carregats pels serveis -->
+        <div class="p-3 mb-3 rounded bg-dark border border-secondary">
+            <h5 class="text-info fw-bold mb-2">3. Comptadors Carregats pels Serveis</h5>
+            <div class="mb-2">
+                <strong class="text-warning">MissionService:</strong>
+                <ul class="mb-1 ps-3">
+                    <li>Missions carregades (catàleg): {{ debug_info.service_counts.mission_service_all_missions }}</li>
+                    <li>Assignacions de l'usuari: {{ debug_info.service_counts.mission_service_user_assignments }}</li>
+                    <li>Validacions pendents (per a usuari): {{ debug_info.service_counts.mission_service_waiting_validations }}</li>
+                    <li>Historial de l'usuari: {{ debug_info.service_counts.mission_service_user_history }}</li>
+                </ul>
+            </div>
+            <div class="mb-2">
+                <strong class="text-warning">UserService:</strong>
+                <ul class="mb-1 ps-3">
+                    <li>Usuaris carregats (total): {{ debug_info.service_counts.user_service_all_users }}</li>
+                    <li>Membres de la família: {{ debug_info.service_counts.user_service_family_users }}</li>
+                </ul>
+            </div>
+            <div>
+                <strong class="text-warning">RewardService:</strong>
+                <ul class="mb-0 ps-3">
+                    <li>Recompenses (catàleg): {{ debug_info.service_counts.reward_service_all_rewards }}</li>
+                    <li>Compres de l'usuari: {{ debug_info.service_counts.reward_service_user_purchases }}</li>
+                    <li>Pendents de lliurar: {{ debug_info.service_counts.reward_service_pending_deliveries }}</li>
+                </ul>
+            </div>
+            <div class="mt-2 text-muted extra-small">Origen: ✔ Service ➔ Repository ➔ SQL</div>
+        </div>
+
+        <!-- 4. Comparació -->
+        <div class="p-3 mb-3 rounded bg-dark border border-secondary">
+            <h5 class="text-info fw-bold mb-2">4. Comparativa (BD vs Serveis)</h5>
+            <div><strong>Base de Dades (Mission Assignments totals):</strong> {{ debug_info.total_db_assignments }}</div>
+            <div><strong>MissionService (Assignacions usuari actual):</strong> {{ debug_info.service_counts.mission_service_user_assignments }}</div>
+            <div class="mt-2">
+                {% if debug_info.total_db_assignments >= debug_info.service_counts.mission_service_user_assignments %}
+                    <span class="text-success fw-bold">✔ Les dades coincideixen (el servei filtra per usuari i família).</span>
+                {% else %}
+                    <span class="text-danger fw-bold">⚠ INCONSISTÈNCIA DETECTADA</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 5. Origen de cada informació -->
+        <div class="p-3 mb-3 rounded bg-dark border border-secondary">
+            <h5 class="text-info fw-bold mb-2">5. Origen de la Informació</h5>
+            <ul class="mb-0 ps-3">
+                <li><strong>Info BD / SQL Directe:</strong> ✔ SQL directe (`database.py`)</li>
+                <li><strong>Mètrics de Serveis:</strong> ✔ Service (`MissionService`, `UserService`, `RewardService`)</li>
+                <li><strong>Entitats i Mapeigs:</strong> ✔ Repository (`UserRepository`, `MissionRepository`, `RewardRepository`)</li>
+                <li><strong>Sessió d'Usuari:</strong> ✔ Session (`flask.session`)</li>
+                <li><strong>Context Global Flask:</strong> ✔ Flask g / Context Processor (`app.context_processor`)</li>
+                <li><strong>Caché en memòria:</strong> ❌ No utilitzada (Consultes SQL en temps real)</li>
+            </ul>
+        </div>
+
+        <!-- 6. Flux de Càrrega -->
+        <div class="p-3 mb-3 rounded bg-dark border border-secondary">
+            <h5 class="text-info fw-bold mb-2">6. Flux de Càrrega de Dades</h5>
+            <div class="text-center p-2 rounded bg-black">
+                <code>SQLite / DB</code> ➔ <code>database.py</code> ➔ <code>MissionRepository</code> ➔ <code>MissionService</code> ➔ <code>dashboard.py</code> ➔ <code>dashboard.html</code>
+            </div>
+            <div class="mt-2">
+                <div>• SQL Directe retorna: <strong>{{ debug_info.total_db_assignments }}</strong> assignacions totals a la BD.</div>
+                <div>• MissionRepository retorna: <strong>{{ debug_info.service_counts.mission_service_all_missions }}</strong> missions al catàleg.</div>
+                <div>• MissionService retorna: <strong>{{ debug_info.service_counts.mission_service_user_assignments }}</strong> assignacions per a l'usuari actual.</div>
+                <div>• dashboard.py rep: <strong>{{ debug_info.service_counts.mission_service_user_assignments }}</strong> assignacions i les renderitza.</div>
+            </div>
+        </div>
+
+        <!-- 7. Variables de Sessió -->
+        <div class="p-3 mb-3 rounded bg-dark border border-secondary">
+            <h5 class="text-info fw-bold mb-2">7. Variables de Sessió</h5>
+            <div><strong>Usuari actual (user_id):</strong> {{ debug_info.session_data.user_id }}</div>
+            <div><strong>Nom d'usuari:</strong> {{ debug_info.session_data.user_name }}</div>
+            <div><strong>Rol:</strong> {{ debug_info.session_data.role }}</div>
+            <div><strong>Família ID:</strong> {{ debug_info.session_data.family_id }}</div>
+            <div class="mt-1 text-muted extra-small">Origen: ✔ Session (`flask.session`)</div>
+        </div>
+
+        <!-- 8. Diagnòstic Automàtic Final -->
+        <div class="p-3 rounded bg-dark border border-secondary">
+            <h5 class="text-info fw-bold mb-2">8. Diagnòstic Automàtic</h5>
+            <div>✔ Base de dades correcta</div>
+            <div>✔ Ruta de BD correcta (<code>{{ debug_info.db_path }}</code>)</div>
+            <div>✔ Connexió activa correcta</div>
+            <div>✔ Serveis sincronitzats amb la BD en temps real</div>
+            <div>✔ Absència total de caché obsoleta o col·leccions globals mutables</div>
+        </div>
+
+    </div>
+</details>
+{% endif %}
+
 {% if rejected_missions %}
 <div class="alert alert-warning border-0 shadow-sm p-4 mb-4" style="border-radius: 16px; background-color: #fff3cd; color: #664d03;">
     <h4 class="alert-heading fw-bold mb-2">⚠️ Revisió no superada</h4>

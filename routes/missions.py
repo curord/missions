@@ -101,7 +101,7 @@ def approve(assignment_id):
         if mission_service.can_user_validate_assignment(user, assignment_obj):
             mission_service.approve_mission(assignment_id, user.id)
 
-    return redirect(url_for("dashboard.dashboard"))
+    return redirect(request.referrer or url_for("dashboard.dashboard"))
 
 
 @missions_bp.post("/mission/<int:assignment_id>/reject")
@@ -125,7 +125,7 @@ def reject(assignment_id):
             mission_service.reject_mission(assignment_id, reason=reason, admin_id=user.id)
 
 
-    return redirect(url_for("dashboard.dashboard"))
+    return redirect(request.referrer or url_for("dashboard.dashboard"))
 
 
 @missions_bp.get("/missions/history")

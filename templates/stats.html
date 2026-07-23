@@ -1,0 +1,646 @@
+{% extends "base.html" %}
+
+{% block title %}Centre d'Estadístiques | Missions{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/stats.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="stats-container py-3">
+
+    <!-- Capçalera del Centre d'Estadístiques -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h1 class="h3 fw-bold mb-0">📊 Centre d'Estadístiques</h1>
+            <p class="text-muted small mb-0">Anàlisi d'evolució, mètrics de gamificació i classificacions familiars.</p>
+        </div>
+        {% if is_admin and inspect_member %}
+        <div>
+            <a href="{{ url_for('stats.stats') }}" class="btn btn-outline-secondary btn-sm">
+                ⬅ Tornar a les meves estadístiques
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- FILA DE KPI PRINCIPALS (Visibles immediatament) -->
+    <div class="row g-2 mb-4">
+        <div class="col-6 col-md-4 col-lg-2-4">
+            <div class="kpi-card text-center p-3 rounded shadow-sm bg-surface border">
+                <div class="kpi-icon mb-1">🏆</div>
+                <div class="kpi-title text-muted small">Nivell</div>
+                <div class="kpi-value h4 fw-bold mb-0 text-primary">{{ user_stats.kpi.level }}</div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-4 col-lg-2-4">
+            <div class="kpi-card text-center p-3 rounded shadow-sm bg-surface border">
+                <div class="kpi-icon mb-1">⭐</div>
+                <div class="kpi-title text-muted small">XP Totals</div>
+                <div class="kpi-value h4 fw-bold mb-0 text-warning">{{ user_stats.kpi.xp }}</div>
+                <div class="kpi-sub text-muted extra-small">+{{ user_stats.kpi.next_level_xp }} XP al següent</div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-4 col-lg-2-4">
+            <div class="kpi-card text-center p-3 rounded shadow-sm bg-surface border">
+                <div class="kpi-icon mb-1">💰</div>
+                <div class="kpi-title text-muted small">Monedes</div>
+                <div class="kpi-value h4 fw-bold mb-0 text-amber">{{ user_stats.kpi.coins }}</div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-4 col-lg-2-4">
+            <div class="kpi-card text-center p-3 rounded shadow-sm bg-surface border">
+                <div class="kpi-icon mb-1">🔥</div>
+                <div class="kpi-title text-muted small">Ratxa Actual</div>
+                <div class="kpi-value h4 fw-bold mb-0 text-danger">{{ user_stats.kpi.streak }} <span class="fs-6 font-normal">dies</span></div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-4 col-lg-2-4">
+            <div class="kpi-card text-center p-3 rounded shadow-sm bg-surface border">
+                <div class="kpi-icon mb-1">✔</div>
+                <div class="kpi-title text-muted small">Completades</div>
+                <div class="kpi-value h4 fw-bold mb-0 text-success">{{ user_stats.kpi.missions_completed }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PESTANYES DE NAVEGACIÓ BOOTSTRAP -->
+    <ul class="nav nav-tabs mb-4 border-bottom-0" id="statsTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {% if active_tab == 'my_stats' %}active fw-bold{% endif %}"
+                    id="my-stats-tab" data-bs-toggle="tab" data-bs-target="#tab-my-stats"
+                    type="button" role="tab" aria-controls="tab-my-stats" aria-selected="true">
+                👤 Les meves estadístiques
+            </button>
+        </li>
+        {% if is_admin %}
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {% if active_tab == 'family_stats' %}active fw-bold{% endif %}"
+                    id="family-stats-tab" data-bs-toggle="tab" data-bs-target="#tab-family-stats"
+                    type="button" role="tab" aria-controls="tab-family-stats" aria-selected="false">
+                👨👩👧 Estadístiques familiars
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {% if active_tab == 'rankings' %}active fw-bold{% endif %}"
+                    id="rankings-tab" data-bs-toggle="tab" data-bs-target="#tab-rankings"
+                    type="button" role="tab" aria-controls="tab-rankings" aria-selected="false">
+                🏆 Classificacions
+            </button>
+        </li>
+        {% endif %}
+    </ul>
+
+    <!-- CONTINGUT DE LES PESTANYES -->
+    <div class="tab-content" id="statsTabsContent">
+
+        <!-- PESTANYA 1: LES MEVES ESTADÍSTIQUES -->
+        <div class="tab-pane fade {% if active_tab == 'my_stats' %}show active{% endif %}"
+             id="tab-my-stats" role="tabpanel" aria-labelledby="my-stats-tab">
+
+            <div class="row g-3">
+
+                <!-- Targeta 1: Perfil -->
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm border-0">
+                        <div class="card-header bg-surface d-flex align-items-center">
+                            <span class="fs-4 me-2">🏆</span>
+                            <h2 class="h5 mb-0 fw-semibold">Perfil</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="avatar-circle fs-2 me-3 p-2 rounded-circle bg-light border text-center" style="width: 60px; height: 60px; line-height: 40px;">
+                                    {{ user_stats.user.avatar }}
+                                </div>
+                                <div>
+                                    <h3 class="h6 fw-bold mb-0">{{ user_stats.user.name }}</h3>
+                                    <span class="badge bg-secondary text-uppercase mb-1">{{ user_stats.user.role }}</span>
+                                    <div class="small text-muted">Nivell {{ user_stats.user.level }}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-2">
+                                <div class="d-flex justify-content-between small mb-1">
+                                    <span>Progrés Nivell {{ user_stats.user.level }}</span>
+                                    <span class="fw-bold">{{ user_stats.user.level_progress }}%</span>
+                                </div>
+                                <div class="progress" style="height: 10px;">
+                                    <div class="progress-bar bg-warning" role="progressbar"
+                                         style="width: {{ user_stats.user.level_progress }}%;"
+                                         aria-valuenow="{{ user_stats.user.level_progress }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                                <div class="text-end text-muted extra-small mt-1">
+                                    Falten {{ user_stats.kpi.next_level_xp }} XP per al Nivell {{ user_stats.user.level + 1 }}
+                                </div>
+                            </div>
+
+                            <hr class="my-3">
+
+                            <div class="d-flex justify-content-between text-muted small">
+                                <span>Monedes: <strong class="text-dark">💰 {{ user_stats.kpi.coins }}</strong></span>
+                                <span>Ratxa: <strong class="text-dark">🔥 {{ user_stats.kpi.streak }} d.</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Targeta 2: Evolució (Gràfiques) -->
+                <div class="col-12 col-md-6 col-lg-8">
+                    <div class="card h-100 shadow-sm border-0">
+                        <div class="card-header bg-surface d-flex justify-content-between align-items-center flex-wrap">
+                            <div class="d-flex align-items-center">
+                                <span class="fs-4 me-2">📈</span>
+                                <h2 class="h5 mb-0 fw-semibold">Evolució</h2>
+                            </div>
+                            <!-- Filtres temporals de la gràfica -->
+                            <div class="btn-group btn-group-sm mt-2 mt-sm-0" role="group" id="evolution-period-buttons">
+                                <button type="button" class="btn btn-outline-primary active" data-period="week">Setmana</button>
+                                <button type="button" class="btn btn-outline-primary" data-period="month">Mes</button>
+                                <button type="button" class="btn btn-outline-primary" data-period="year">Any</button>
+                                <button type="button" class="btn btn-outline-primary" data-period="total">Total</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container position-relative" style="min-height: 240px; width: 100%;">
+                                <canvas id="chartUserEvolution"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Targeta 3: Activitat -->
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm border-0">
+                        <div class="card-header bg-surface d-flex align-items-center">
+                            <span class="fs-4 me-2">📋</span>
+                            <h2 class="h5 mb-0 fw-semibold">Activitat</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3 p-2 rounded bg-light">
+                                <span class="fw-semibold">Percentatge d'Èxit</span>
+                                <span class="h5 fw-bold mb-0 text-success">{{ user_stats.activity.success_rate }}%</span>
+                            </div>
+
+                            <ul class="list-group list-group-flush small">
+                                <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                    <span>✔ Completades</span>
+                                    <span class="badge bg-success rounded-pill fs-6">{{ user_stats.activity.completed }}</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                    <span>⏳ Pendents</span>
+                                    <span class="badge bg-warning text-dark rounded-pill fs-6">{{ user_stats.activity.pending }}</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                    <span>🔍 Esperant validació</span>
+                                    <span class="badge bg-info text-dark rounded-pill fs-6">{{ user_stats.activity.waiting_validation }}</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                    <span>❌ Rebutjades</span>
+                                    <span class="badge bg-danger rounded-pill fs-6">{{ user_stats.activity.rejected }}</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                    <span>🚫 Cancel·lades</span>
+                                    <span class="badge bg-secondary rounded-pill fs-6">{{ user_stats.activity.cancelled }}</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Targeta 5: Recompenses -->
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm border-0">
+                        <div class="card-header bg-surface d-flex align-items-center">
+                            <span class="fs-4 me-2">🎁</span>
+                            <h2 class="h5 mb-0 fw-semibold">Recompenses</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-2 text-center mb-3">
+                                <div class="col-6">
+                                    <div class="p-2 border rounded bg-light">
+                                        <div class="text-muted extra-small">Comprades</div>
+                                        <div class="h5 fw-bold mb-0">{{ user_stats.rewards.total_bought }}</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-2 border rounded bg-light">
+                                        <div class="text-muted extra-small">Gastades</div>
+                                        <div class="h5 fw-bold mb-0 text-amber">💰 {{ user_stats.rewards.total_coins_spent }}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <ul class="list-group list-group-flush small">
+                                <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                    <span>📦 Pendents de lliurament</span>
+                                    <span class="badge bg-warning text-dark rounded-pill fs-6">{{ user_stats.rewards.pending_delivery }}</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                    <span>✅ Lliurades</span>
+                                    <span class="badge bg-success rounded-pill fs-6">{{ user_stats.rewards.delivered_count }}</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Targeta 6: Assoliments (Futur) -->
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm border-0">
+                        <div class="card-header bg-surface d-flex align-items-center">
+                            <span class="fs-4 me-2">🏅</span>
+                            <h2 class="h5 mb-0 fw-semibold">Assoliments</h2>
+                        </div>
+                        <div class="card-body text-center d-flex flex-column justify-content-center py-4">
+                            <div class="fs-1 text-muted mb-2">🔒</div>
+                            <h3 class="h6 fw-semibold text-muted">Pròximament</h3>
+                            <p class="small text-muted mb-0">Mètrics de trofeus i insígnies especials preparades per a futures funcionalitats.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Targeta 4: Historial Expandible -->
+                <div class="col-12">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-surface d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <span class="fs-4 me-2">📜</span>
+                                <h2 class="h5 mb-0 fw-semibold">Historial de Missions</h2>
+                            </div>
+                            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseHistory">
+                                Ampliar / Reduir
+                            </button>
+                        </div>
+                        <div class="collapse show" id="collapseHistory">
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Missió</th>
+                                                <th>Categoria</th>
+                                                <th>Data</th>
+                                                <th>XP / Monedes</th>
+                                                <th>Validador</th>
+                                                <th>Estat</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in user_stats.history %}
+                                            <tr>
+                                                <td>
+                                                    <span class="me-1">{{ item.icon }}</span>
+                                                    <strong>{{ item.title }}</strong>
+                                                </td>
+                                                <td><span class="badge" style="background-color: {{ item.color }};">{{ item.category }}</span></td>
+                                                <td class="small text-muted">{{ item.validated_date }}</td>
+                                                <td class="small fw-bold">+{{ item.points }} XP / 💰 {{ item.coins }}</td>
+                                                <td class="small">{{ item.validated_by_name or '-' }}</td>
+                                                <td>
+                                                    {% if item.status == 'completed' %}
+                                                        <span class="badge bg-success">Aprovada</span>
+                                                    {% elif item.status == 'rejected' %}
+                                                        <span class="badge bg-danger">Rebutjada</span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary">{{ item.status }}</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% else %}
+                                            <tr>
+                                                <td colspan="6" class="text-center py-3 text-muted">No hi ha historial disponible.</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        {% if is_admin and family_stats %}
+        <!-- PESTANYA 2: ESTADÍSTIQUES FAMILIARS (ADMIN ONLY) -->
+        <div class="tab-pane fade {% if active_tab == 'family_stats' %}show active{% endif %}"
+             id="tab-family-stats" role="tabpanel" aria-labelledby="family-stats-tab">
+
+            <div class="row g-3">
+
+                <!-- Targeta: Resum familiar global -->
+                <div class="col-12 col-lg-4">
+                    <div class="card h-100 shadow-sm border-0">
+                        <div class="card-header bg-surface d-flex align-items-center">
+                            <span class="fs-4 me-2">📊</span>
+                            <h2 class="h5 mb-0 fw-semibold">Resum Familiar</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-2 mb-3 text-center">
+                                <div class="col-6">
+                                    <div class="p-2 border rounded bg-light">
+                                        <div class="text-muted extra-small">XP Totals</div>
+                                        <div class="h5 fw-bold text-warning mb-0">{{ family_stats.summary.total_xp }}</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-2 border rounded bg-light">
+                                        <div class="text-muted extra-small">Missions Fetes</div>
+                                        <div class="h5 fw-bold text-success mb-0">{{ family_stats.summary.completed_count }}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <h3 class="h6 fw-bold mb-2">Mitjanes Familiars</h3>
+                            <ul class="list-group list-group-flush small mb-3">
+                                <li class="list-group-item d-flex justify-content-between px-0">
+                                    <span>Mitjana XP / membre:</span>
+                                    <strong class="text-primary">{{ family_stats.averages.avg_xp }} XP</strong>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between px-0">
+                                    <span>Mitjana Missions / membre:</span>
+                                    <strong class="text-success">{{ family_stats.averages.avg_missions }}</strong>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between px-0">
+                                    <span>Mitjana Ratxa / membre:</span>
+                                    <strong class="text-danger">{{ family_stats.averages.avg_streak }} dies</strong>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Targetes de Membres Individuats -->
+                <div class="col-12 col-lg-8">
+                    <div class="card h-100 shadow-sm border-0">
+                        <div class="card-header bg-surface d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <span class="fs-4 me-2">👤</span>
+                                <h2 class="h5 mb-0 fw-semibold">Membres de la Família</h2>
+                            </div>
+                            <span class="badge bg-secondary">{{ family_stats.members|length }} membres</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-2">
+                                {% for m in family_stats.members %}
+                                <div class="col-12 col-md-6">
+                                    <div class="member-card p-3 border rounded shadow-sm bg-white h-100 cursor-pointer"
+                                         data-bs-toggle="modal" data-bs-target="#memberModal{{ m.id }}">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <div class="avatar-circle fs-3 me-2 rounded-circle p-2 bg-light border text-center" style="width: 50px; height: 50px; line-height: 32px;">
+                                                {{ m.avatar }}
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h3 class="h6 fw-bold mb-0 text-dark">{{ m.name }}</h3>
+                                                <span class="badge bg-secondary extra-small">{{ m.role }}</span>
+                                            </div>
+                                            <span class="badge bg-primary fs-6">Nivell {{ m.level }}</span>
+                                        </div>
+                                        <div class="row text-center g-1 small">
+                                            <div class="col-4">
+                                                <div class="border-end"><strong class="text-warning">{{ m.xp }}</strong> XP</div>
+                                            </div>
+                                            <div class="col-4">
+                                                <div class="border-end"><strong class="text-amber">💰 {{ m.coins }}</strong></div>
+                                            </div>
+                                            <div class="col-4">
+                                                <div><strong class="text-danger">🔥 {{ m.streak }}d</strong></div>
+                                            </div>
+                                        </div>
+                                        <div class="mt-2 text-center">
+                                            <span class="btn btn-xs btn-outline-primary text-decoration-none">Veure Detall Complet 🔍</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- MODAL BOOTSTRAP PER A DETALL DE MEMBRE (Sense eixir de la pantalla) -->
+                                <div class="modal fade" id="memberModal{{ m.id }}" tabindex="-1" aria-labelledby="memberModalLabel{{ m.id }}" aria-hidden="true">
+                                    <div class="modal-dialog modal-lg modal-dialog-centered">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h2 class="modal-title h5" id="memberModalLabel{{ m.id }}">
+                                                    {{ m.avatar }} Estadístiques de {{ m.name }}
+                                                </h2>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tancar"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="row g-3 text-center mb-3">
+                                                    <div class="col-3">
+                                                        <div class="p-2 border rounded bg-light">
+                                                            <div class="text-muted extra-small">Nivell</div>
+                                                            <div class="fw-bold text-primary">{{ m.level }}</div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-3">
+                                                        <div class="p-2 border rounded bg-light">
+                                                            <div class="text-muted extra-small">XP Totals</div>
+                                                            <div class="fw-bold text-warning">{{ m.xp }}</div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-3">
+                                                        <div class="p-2 border rounded bg-light">
+                                                            <div class="text-muted extra-small">Monedes</div>
+                                                            <div class="fw-bold text-amber">💰 {{ m.coins }}</div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-3">
+                                                        <div class="p-2 border rounded bg-light">
+                                                            <div class="text-muted extra-small">Èxit</div>
+                                                            <div class="fw-bold text-success">{{ m.success_rate }}%</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <h3 class="h6 fw-bold mb-2">Desglossament d'Activitat</h3>
+                                                <ul class="list-group small mb-3">
+                                                    <li class="list-group-item d-flex justify-content-between">
+                                                        <span>✔ Missions Completades:</span> <strong>{{ m.completed }}</strong>
+                                                    </li>
+                                                    <li class="list-group-item d-flex justify-content-between">
+                                                        <span>⏳ Missions Pendents:</span> <strong>{{ m.pending }}</strong>
+                                                    </li>
+                                                    <li class="list-group-item d-flex justify-content-between">
+                                                        <span>🔍 Esperant Validació:</span> <strong>{{ m.waiting }}</strong>
+                                                    </li>
+                                                    <li class="list-group-item d-flex justify-content-between">
+                                                        <span>❌ Rebutjades:</span> <strong>{{ m.rejected }}</strong>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tancar</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Targeta: Calendari GitHub d'activitat -->
+                <div class="col-12">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-surface d-flex align-items-center">
+                            <span class="fs-4 me-2">📅</span>
+                            <h2 class="h5 mb-0 fw-semibold">Calendari d'Activitat Familiar (Últims 90 dies)</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="github-calendar-grid">
+                                {% for day in family_stats.calendar %}
+                                <div class="calendar-day {{ day.level_class }}"
+                                     title="{{ day.formatted_date }}: {{ day.count }} missions ({{ day.label }})"></div>
+                                {% endfor %}
+                            </div>
+                            <div class="d-flex justify-content-end align-items-center extra-small text-muted mt-2">
+                                <span class="me-2">Menys activitat</span>
+                                <span class="calendar-legend-box activity-none me-1"></span>
+                                <span class="calendar-legend-box activity-medium me-1"></span>
+                                <span class="calendar-legend-box activity-high me-2"></span>
+                                <span>Més activitat</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- PESTANYA 3: CLASSIFICACIONS (ADMIN ONLY) -->
+        <div class="tab-pane fade {% if active_tab == 'rankings' %}show active{% endif %}"
+             id="tab-rankings" role="tabpanel" aria-labelledby="rankings-tab">
+
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-surface d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <span class="fs-4 me-2">🏆</span>
+                        <h2 class="h5 mb-0 fw-semibold">Classificacions i Rànquings</h2>
+                    </div>
+                </div>
+                <div class="card-body">
+
+                    <!-- Acordió Bootstrap de Rànquings -->
+                    <div class="accordion" id="accordionRankings">
+
+                        <!-- Ranking 1: XP -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingXP">
+                                <button class="accordion-button fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseXP" aria-expanded="true" aria-controls="collapseXP">
+                                    ⭐ Rànquing per XP Totals
+                                </button>
+                            </h2>
+                            <div id="collapseXP" class="accordion-collapse collapse show" aria-labelledby="headingXP" data-bs-parent="#accordionRankings">
+                                <div class="accordion-body p-0">
+                                    <ul class="list-group list-group-flush">
+                                        {% for item in leaderboards.xp %}
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            <div class="d-flex align-items-center">
+                                                <span class="fs-5 me-2 fw-bold" style="width: 30px;">{{ item.badge }}</span>
+                                                <span class="fs-4 me-2">{{ item.avatar }}</span>
+                                                <strong class="text-dark">{{ item.name }}</strong>
+                                            </div>
+                                            <span class="badge bg-warning text-dark fs-6">{{ item.xp }} XP</span>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ranking 2: Monedes -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingCoins">
+                                <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCoins" aria-expanded="false" aria-controls="collapseCoins">
+                                    💰 Rànquing per Monedes
+                                </button>
+                            </h2>
+                            <div id="collapseCoins" class="accordion-collapse collapse" aria-labelledby="headingCoins" data-bs-parent="#accordionRankings">
+                                <div class="accordion-body p-0">
+                                    <ul class="list-group list-group-flush">
+                                        {% for item in leaderboards.coins %}
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            <div class="d-flex align-items-center">
+                                                <span class="fs-5 me-2 fw-bold" style="width: 30px;">{{ item.badge }}</span>
+                                                <span class="fs-4 me-2">{{ item.avatar }}</span>
+                                                <strong class="text-dark">{{ item.name }}</strong>
+                                            </div>
+                                            <span class="badge bg-amber text-dark fs-6">💰 {{ item.coins }}</span>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ranking 3: Missions Completades -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingCompleted">
+                                <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCompleted" aria-expanded="false" aria-controls="collapseCompleted">
+                                    ✔ Rànquing per Missions Completades
+                                </button>
+                            </h2>
+                            <div id="collapseCompleted" class="accordion-collapse collapse" aria-labelledby="headingCompleted" data-bs-parent="#accordionRankings">
+                                <div class="accordion-body p-0">
+                                    <ul class="list-group list-group-flush">
+                                        {% for item in leaderboards.completed %}
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            <div class="d-flex align-items-center">
+                                                <span class="fs-5 me-2 fw-bold" style="width: 30px;">{{ item.badge }}</span>
+                                                <span class="fs-4 me-2">{{ item.avatar }}</span>
+                                                <strong class="text-dark">{{ item.name }}</strong>
+                                            </div>
+                                            <span class="badge bg-success fs-6">{{ item.completed }} missions</span>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ranking 4: Ratxa -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingStreak">
+                                <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseStreak" aria-expanded="false" aria-controls="collapseStreak">
+                                    🔥 Rànquing per Ratxa Actual
+                                </button>
+                            </h2>
+                            <div id="collapseStreak" class="accordion-collapse collapse" aria-labelledby="headingStreak" data-bs-parent="#accordionRankings">
+                                <div class="accordion-body p-0">
+                                    <ul class="list-group list-group-flush">
+                                        {% for item in leaderboards.streak %}
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            <div class="d-flex align-items-center">
+                                                <span class="fs-5 me-2 fw-bold" style="width: 30px;">{{ item.badge }}</span>
+                                                <span class="fs-4 me-2">{{ item.avatar }}</span>
+                                                <strong class="text-dark">{{ item.name }}</strong>
+                                            </div>
+                                            <span class="badge bg-danger fs-6">🔥 {{ item.streak }} dies</span>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js via CDN per a gràfiques responsives -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/stats.js') }}"></script>
+{% endblock %}

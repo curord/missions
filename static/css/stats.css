@@ -1,0 +1,101 @@
+/* Estils específics del Centre d'Estadístiques (Mobile First) */
+
+body {
+    overflow-x: hidden !important;
+}
+
+.stats-container {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+/* Fila de KPI principals (5 columnes en pantalles grans) */
+@media (min-width: 992px) {
+    .col-lg-2-4 {
+        flex: 0 0 auto;
+        width: 20%;
+    }
+}
+
+.kpi-card {
+    transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    background-color: var(--color-surface, #ffffff);
+}
+
+.kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+}
+
+.extra-small {
+    font-size: 0.75rem;
+}
+
+.text-amber {
+    color: #d97706;
+}
+
+.bg-amber {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.member-card {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.member-card:hover {
+    border-color: var(--color-primary, #3b82f6) !important;
+    box-shadow: 0 4px 14px rgba(59, 130, 246, 0.15) !important;
+}
+
+/* Calendari d'activitat estil GitHub */
+.github-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(14px, 1fr));
+    gap: 4px;
+    max-width: 100%;
+    padding: 8px 0;
+    overflow-x: auto;
+}
+
+.calendar-day {
+    width: 14px;
+    height: 14px;
+    border-radius: 2px;
+    background-color: #ebedf0;
+    transition: transform 0.1s ease;
+}
+
+.calendar-day:hover {
+    transform: scale(1.3);
+}
+
+.calendar-day.activity-none {
+    background-color: #fee2e2; /* 🟥 vermell molt clar / clar per sense activitat */
+}
+
+.calendar-day.activity-medium {
+    background-color: #fef08a; /* 🟨 groc per activitat mitjana */
+}
+
+.calendar-day.activity-high {
+    background-color: #4ade80; /* 🟩 verd per molta activitat */
+}
+
+.calendar-legend-box {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+}
+
+/* Estils d'acordió de classificacions */
+.accordion-button:not(.collapsed) {
+    background-color: rgba(59, 130, 246, 0.08);
+    color: #1d4ed8;
+}

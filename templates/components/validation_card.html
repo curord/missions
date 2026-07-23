@@ -43,7 +43,7 @@
         <div class="button-group" style="display: flex; gap: 8px; width: 100%;">
 
             <form method="POST"
-                  action="{{ url_for('admin.approve', assignment_id=mission.assignment_id) }}"
+                  action="{{ url_for('missions.approve', assignment_id=mission.assignment_id) }}"
                   style="flex: 1; min-width: 0;">
 
                 <button class="btn-ui btn-success-ui w-100 text-center px-1" style="font-size: 0.9rem; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">
@@ -53,7 +53,7 @@
             </form>
 
             <form method="POST"
-                  action="{{ url_for('admin.reject', assignment_id=mission.assignment_id) }}"
+                  action="{{ url_for('missions.reject', assignment_id=mission.assignment_id) }}"
                   onsubmit="const r = prompt('Motiu de la devolució:'); if (!r) return false; this.reason.value = r;"
                   style="flex: 1; min-width: 0;">
                 <input type="hidden" name="reason">

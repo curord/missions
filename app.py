@@ -16,6 +16,7 @@ from routes.dashboard import dashboard_bp
 from routes.missions import missions_bp
 from routes.admin import admin_bp
 from routes.rewards import rewards_bp
+from routes.stats import stats_bp
 
 
 app = Flask(__name__)
@@ -31,6 +32,7 @@ app.register_blueprint(missions_bp)
 app.register_blueprint(ui_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(rewards_bp)
+app.register_blueprint(stats_bp)
 
 
 @app.context_processor

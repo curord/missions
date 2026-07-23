@@ -442,11 +442,25 @@ def get_waiting_validations():
 
             ma.id AS assignment_id,
 
+            ma.id,
+
+            ma.mission_id,
+
+            ma.user_id,
+
             ma.status,
 
             ma.assignment_type,
 
             ma.completed_at,
+
+            ma.completed_by,
+
+            ma.due_date,
+
+            ma.assigned_date,
+
+            ma.coins,
 
             m.title as title,
 
@@ -456,7 +470,13 @@ def get_waiting_validations():
 
             m.points,
 
+            m.requires_validation,
+
             c.name AS category,
+
+            c.color,
+
+            c.icon AS category_icon,
 
             u.name AS gamer_name
 
@@ -688,4 +708,4 @@ def get_user_mission_history(user_id):
         """,
         (user_id,)
     )
-
+
